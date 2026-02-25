@@ -2,24 +2,26 @@ addEventListener("fetch", (event) => {
   event.respondWith(handleRequest(event.request));
 });
 
+let customers = [
+  { id: 1, name: "Juan Pérez", document_id: "001-1234567-8", phone: "809-111-2222" },
+  { id: 2, name: "María López", document_id: "001-2345678-9", phone: "809-333-4444" },
+];
+
 async function handleRequest(request) {
   const url = new URL(request.url);
 
   if (url.pathname === "/" || url.pathname === "/index") {
-    return new Response(getHTML(), {
-      headers: { "Content-Type": "text/html;charset=UTF-8" },
-    });
+    return new Response(getHTML(), { headers: { "Content-Type": "text/html;charset=UTF-8" } });
   }
 
   if (url.pathname.startsWith("/api/customers")) {
     if (request.method === "GET") {
-      return new Response(JSON.stringify(getCustomers()), {
-        headers: { "Content-Type": "application/json" },
-      });
+      return new Response(JSON.stringify(customers), { headers: { "Content-Type": "application/json" } });
     }
     if (request.method === "POST") {
       const data = await request.json();
-      createCustomer(data);
+      const newId = customers.length ? customers[customers.length - 1].id + 1 : 1;
+      customers.push({ id: newId, ...data });
       return new Response(JSON.stringify({ success: true }));
     }
   }
@@ -27,22 +29,6 @@ async function handleRequest(request) {
   return new Response("Not found", { status: 404 });
 }
 
-// Simulación de clientes en memoria
-let customers = [
-  { id: 1, name: "Juan Pérez", document_id: "001-1234567-8", phone: "809-111-2222" },
-  { id: 2, name: "María López", document_id: "001-2345678-9", phone: "809-333-4444" },
-];
-
-function getCustomers() {
-  return customers;
-}
-
-function createCustomer(data) {
-  const newId = customers.length ? customers[customers.length - 1].id + 1 : 1;
-  customers.push({ id: newId, ...data });
-}
-
-// HTML completo
 function getHTML() {
   return `
 <!DOCTYPE html>
@@ -124,7 +110,6 @@ function loadCustomers(){
   fetchCustomers();
 }
 
-// CLIENTES
 async function fetchCustomers(){
   const res = await fetch('/api/customers');
   const data = await res.json();
@@ -134,7 +119,7 @@ async function fetchCustomers(){
 function renderCustomerTable(customers){
   const table = document.getElementById('customerTable');
   let html = '<table><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Acciones</th></tr></thead><tbody>';
-  customers.forEach(c=>{
+  customers.forEach(c => {
     html += `<tr>
       <td>${c.name}</td>
       <td>${c.document_id}</td>
@@ -187,7 +172,6 @@ async function saveCustomer(){
       data[idx].name=name;
       data[idx].document_id=doc;
       data[idx].phone=phone;
-      // simular actualización
       renderCustomerTable(data);
     }
   }else{
@@ -202,8 +186,7 @@ async function saveCustomer(){
 }
 function deleteCustomer(id){
   if(confirm('¿Eliminar este cliente?')){
-    const res = customers.filter(c=>c.id!==id);
-    customers=res;
+    customers = customers.filter(c=>c.id!==id);
     renderCustomerTable(customers);
   }
 }
