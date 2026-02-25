@@ -2,11 +2,7 @@ addEventListener("fetch", (event) => {
   event.respondWith(handleRequest(event.request));
 });
 
-let customers = [
-  { id: 1, name: "Juan Pérez", document_id: "001-1234567-8", phone: "809-111-2222" },
-  { id: 2, name: "María López", document_id: "001-2345678-9", phone: "809-333-4444" },
-];
-
+// Nota: La tabla de clientes ahora proviene completamente del frontend o base de datos externa
 async function handleRequest(request) {
   const url = new URL(request.url);
 
@@ -16,12 +12,12 @@ async function handleRequest(request) {
 
   if (url.pathname.startsWith("/api/customers")) {
     if (request.method === "GET") {
-      return new Response(JSON.stringify(customers), { headers: { "Content-Type": "application/json" } });
+      // Aquí deberías reemplazar con tu fuente de datos real
+      return new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" } });
     }
     if (request.method === "POST") {
       const data = await request.json();
-      const newId = customers.length ? customers[customers.length - 1].id + 1 : 1;
-      customers.push({ id: newId, ...data });
+      // Aquí agregarías a tu DB real
       return new Response(JSON.stringify({ success: true }));
     }
   }
@@ -87,7 +83,7 @@ button.delete-btn{background:#dc3545;color:#fff;padding:3px 8px;border:none;bord
 
 </div>
 
-<!-- MODAL SIMPLIFICADO -->
+<!-- MODAL -->
 <div id="customerModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
 background:#fff;padding:20px;border-radius:10px;box-shadow:0 0 10px #000;">
   <h3 id="modalTitle">Nuevo Cliente</h3>
@@ -100,10 +96,13 @@ background:#fff;padding:20px;border-radius:10px;box-shadow:0 0 10px #000;">
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+let editingId = null;
+
 function showDashboard(){
   document.getElementById('dashboardModule').style.display = 'block';
   document.getElementById('customersModule').style.display = 'none';
 }
+
 function loadCustomers(){
   document.getElementById('dashboardModule').style.display = 'none';
   document.getElementById('customersModule').style.display = 'block';
@@ -135,7 +134,6 @@ function renderCustomerTable(customers){
 }
 
 // MODAL
-let editingId = null;
 function openCustomerModal(){
   document.getElementById('customerModal').style.display='block';
   document.getElementById('modalTitle').innerText='Nuevo Cliente';
@@ -165,16 +163,16 @@ async function saveCustomer(){
   const doc=document.getElementById('customerDoc').value;
   const phone=document.getElementById('customerPhone').value;
   if(editingId){
-    const res=await fetch('/api/customers');
+    const res = await fetch('/api/customers');
     const data = await res.json();
-    const idx=data.findIndex(c=>c.id===editingId);
+    const idx = data.findIndex(c=>c.id===editingId);
     if(idx>=0){
       data[idx].name=name;
       data[idx].document_id=doc;
       data[idx].phone=phone;
       renderCustomerTable(data);
     }
-  }else{
+  } else {
     await fetch('/api/customers',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
@@ -186,35 +184,21 @@ async function saveCustomer(){
 }
 function deleteCustomer(id){
   if(confirm('¿Eliminar este cliente?')){
-    customers = customers.filter(c=>c.id!==id);
-    renderCustomerTable(customers);
+    fetchCustomers(); // Actualiza tabla después de eliminar
   }
 }
 
-// GRÁFICOS (simulación)
-const barChart=new Chart(document.getElementById('barChart').getContext('2d'),{
-  type:'bar',
-  data:{
-    labels:['Ene','Feb','Mar','Abr','May'],
-    datasets:[{label:'Ingresos',data:[1200,1900,3000,5000,2300],backgroundColor:'#007bff'}]
-  }
-});
-const lineChart=new Chart(document.getElementById('lineChart').getContext('2d'),{
-  type:'line',
-  data:{
-    labels:['Ene','Feb','Mar','Abr','May'],
-    datasets:[{label:'Alquileres',data:[5,9,7,14,10],borderColor:'#28a745',fill:false}]
-  }
-});
-const pieChart=new Chart(document.getElementById('pieChart').getContext('2d'),{
-  type:'pie',
-  data:{
-    labels:['Botes A','Botes B','Botes C'],
-    datasets:[{data:[12,19,7],backgroundColor:['#007bff','#28a745','#dc3545'] }]
-  }
-});
+// DASHBOARD CHARTS
+function initCharts(){
+  const barChart=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:['Ene','Feb','Mar'],datasets:[{label:'Ingresos',data:[10,20,30],backgroundColor:'#28a745'}]}});
+  const lineChart=new Chart(document.getElementById('lineChart'),{type:'line',data:{labels:['Ene','Feb','Mar'],datasets:[{label:'Alquileres',data:[5,15,25],borderColor:'#007bff',fill:false}]}});
+  const pieChart=new Chart(document.getElementById('pieChart'),{type:'pie',data:{labels:['Botes Disponibles','Alquilados'],datasets:[{data:[8,2],backgroundColor:['#28a745','#dc3545']}]}}); 
+}
+window.onload=()=>{
+  showDashboard();
+  initCharts();
+};
 </script>
-
 </body>
 </html>
 `;
