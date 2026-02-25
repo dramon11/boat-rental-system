@@ -9,9 +9,9 @@ export default {
     try {
       const url = new URL(request.url);
 
-      /* =============================
-         FRONTEND ERP
-      ============================== */
+      // =============================
+      // FRONTEND ERP
+      // =============================
       if (url.pathname === "/" && request.method === "GET") {
 
         const html = `
@@ -63,13 +63,11 @@ body{background:#f1f5f9;}
 <div class="menu-item" onclick="loadModule('boats')">Botes</div>
 <div class="menu-item" onclick="loadModule('rentals')">Alquileres</div>
 </div>
-
 <div class="header"><div>Panel Administrativo</div><div>Admin</div></div>
 <div class="content" id="mainContent"></div>
 <div id="toast" class="toast"></div>
 
 <script>
-// --- Helpers ---
 function showToast(msg,type){
   const t=document.getElementById("toast");
   t.innerText=msg;
@@ -81,18 +79,15 @@ async function fetchJSON(path,opt){const r=await fetch(path,opt);return r.json()
 // --- DASHBOARD ---
 async function showDashboard(){
   const c=document.getElementById("mainContent");
-  c.innerHTML=`
-    <div class="cards">
-      <div class="card"><h4>Ingresos Hoy</h4><h2 id="income">$0</h2></div>
-      <div class="card"><h4>Alquileres Activos</h4><h2 id="active">0</h2></div>
-      <div class="card"><h4>Botes Disponibles</h4><h2 id="boats">0</h2></div>
-      <div class="card"><h4>Total Clientes</h4><h2 id="customers">0</h2></div>
-    </div>
-    <div class="charts">
-      <div class="chart-box"><h4>Resumen General (Barras)</h4><canvas id="barChart"></canvas></div>
-      <div class="chart-box"><h4>Tendencia (Línea)</h4><canvas id="lineChart"></canvas></div>
-      <div class="chart-box full-width"><h4>Distribución (Pie)</h4><canvas id="pieChart"></canvas></div>
-    </div>`;
+  c.innerHTML='<div class="cards">'+
+      '<div class="card"><h4>Ingresos Hoy</h4><h2 id="income">$0</h2></div>'+
+      '<div class="card"><h4>Alquileres Activos</h4><h2 id="active">0</h2></div>'+
+      '<div class="card"><h4>Botes Disponibles</h4><h2 id="boats">0</h2></div>'+
+      '<div class="card"><h4>Total Clientes</h4><h2 id="customers">0</h2></div></div>'+
+      '<div class="charts">'+
+      '<div class="chart-box"><h4>Resumen General (Barras)</h4><canvas id="barChart"></canvas></div>'+
+      '<div class="chart-box"><h4>Tendencia (Línea)</h4><canvas id="lineChart"></canvas></div>'+
+      '<div class="chart-box full-width"><h4>Distribución (Pie)</h4><canvas id="pieChart"></canvas></div></div>';
   
   const data=await fetchJSON("/api/dashboard");
   document.getElementById("income").innerText="$"+data.income_today;
@@ -101,44 +96,26 @@ async function showDashboard(){
   document.getElementById("customers").innerText=data.total_customers;
 
   const values=[data.income_today,data.active_rentals,data.available_boats,data.total_customers];
+  new Chart(document.getElementById("barChart"),{type:"bar",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values,label:"Dashboard"}]}});
+  new Chart(document.getElementById("lineChart"),{type:"line",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values,tension:0.4,label:"Dashboard"}]}});
+  new Chart(document.getElementById("pieChart"),{type:"pie",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}});
 
-  new Chart(document.getElementById("barChart"),{
-    type:"bar",
-    data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values,label:"Dashboard"}]}
-  });
-  new Chart(document.getElementById("lineChart"),{
-    type:"line",
-    data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values,tension:0.4,label:"Dashboard"}]}
-  });
-  new Chart(document.getElementById("pieChart"),{
-    type:"pie",
-    data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}
-  });
 }
 
-// --- CRUD Modules ---
+// --- CRUD MODULES ---
 async function loadModule(type){
   const c=document.getElementById("mainContent");
-  c.innerHTML=`
-    <div class="module-header">
-      <div><h2>${type}</h2></div>
-      <div class="actions">
-        <input id="searchInput" class="input-search" placeholder="Buscar..."/>
-        <button class="btn-primary" onclick="openModal('${type}')">+ Nuevo</button>
-      </div>
-    </div>
-    <div class="card"><div id="loader">Cargando...</div><div id="table"></div></div>
-    <div id="${type}Modal" class="modal-overlay">
-      <div class="modal">
-        <h3>Nuevo ${type}</h3>
-        <input id="${type}_name" placeholder="Nombre"/>
-        <input id="${type}_extra" placeholder="Documento / Extra"/>
-        <div style="margin-top:10px">
-          <button class="btn-success" onclick="saveItem('${type}')">Guardar</button>
-          <button class="btn-secondary" onclick="closeModal('${type}')">Cancelar</button>
-        </div>
-      </div>
-    </div>`;
+  c.innerHTML='<div class="module-header"><div><h2>'+type+'</h2></div><div class="actions">'+
+      '<input id="searchInput" class="input-search" placeholder="Buscar..."/>'+
+      '<button class="btn-primary" onclick="openModal(\''+type+'\')">+ Nuevo</button></div></div>'+
+      '<div class="card"><div id="loader">Cargando...</div><div id="table"></div></div>'+
+      '<div id="'+type+'Modal" class="modal-overlay">'+
+      '<div class="modal"><h3>Nuevo '+type+'</h3>'+
+      '<input id="'+type+'_name" placeholder="Nombre"/>'+
+      '<input id="'+type+'_extra" placeholder="Documento / Extra"/>'+
+      '<div style="margin-top:10px">'+
+      '<button class="btn-success" onclick="saveItem(\''+type+'\')">Guardar</button>'+
+      '<button class="btn-secondary" onclick="closeModal(\''+type+'\')">Cancelar</button></div></div></div>';
   await fetchItems(type);
 }
 
@@ -147,7 +124,6 @@ async function fetchItems(type){
   let data=await fetchJSON("/api/"+type);
   document.getElementById("loader").style.display="none";
   renderTable(type,data);
-
   const input=document.getElementById("searchInput");
   input.addEventListener("input",function(e){
     const val=e.target.value.toLowerCase();
@@ -159,10 +135,10 @@ function renderTable(type,data){
   if(data.length===0){document.getElementById("table").innerHTML="<p>No hay datos</p>"; return;}
   let html="<table class='data-table'><thead><tr><th>Nombre</th><th>Extra</th><th>Acciones</th></tr></thead><tbody>";
   data.forEach(i=>{
-    html+="<tr><td>"+(i.full_name||i.name)+"</td><td>"+(i.document_id||i.extra||"-")+"</td>" +
-          "<td><button class='btn-danger-sm' onclick=\"deleteItem('"+type+"',"+i.id+")\">Eliminar</button></td></tr>";
+    html+='<tr><td>'+(i.full_name||i.name)+'</td><td>'+(i.document_id||i.extra||'-')+'</td>'+
+          '<td><button class="btn-danger-sm" onclick="deleteItem(\''+type+'\','+i.id+')">Eliminar</button></td></tr>';
   });
-  html+="</tbody></table>";
+  html+='</tbody></table>';
   document.getElementById("table").innerHTML=html;
 }
 
@@ -172,7 +148,7 @@ function closeModal(type){document.getElementById(type+"Modal").classList.remove
 async function saveItem(type){
   const body={full_name:document.getElementById(type+"_name").value,document_id:document.getElementById(type+"_extra").value};
   const res=await fetch("/api/"+type,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
-  if(res.ok){showToast(type+" creado correctamente","success");closeModal(type);fetchItems(type);} 
+  if(res.ok){showToast(type+" creado correctamente","success");closeModal(type);fetchItems(type);}
   else{showToast("Error al crear "+type,"error");}
 }
 
@@ -184,30 +160,22 @@ async function deleteItem(type,id){
 }
 
 showDashboard();
-
 </script>
 </body>
 </html>
 `;
-
         return new Response(html,{headers:{"Content-Type":"text/html"}});
       }
 
-      /* =============================
-         API DASHBOARD
-      ============================== */
+      // =============================
+      // API DASHBOARD
+      // =============================
       if(url.pathname=="/api/dashboard"){
         const income=await env.DB.prepare("SELECT IFNULL(SUM(total_amount),0) as total FROM rentals WHERE DATE(created_at)=DATE('now')").first();
         const active=await env.DB.prepare("SELECT COUNT(*) as total FROM rentals WHERE status='active'").first();
         const boats=await env.DB.prepare("SELECT COUNT(*) as total FROM boats WHERE status='available'").first();
         const customers=await env.DB.prepare("SELECT COUNT(*) as total FROM customers").first();
-
-        return json({
-          income_today: income.total,
-          active_rentals: active.total,
-          available_boats: boats.total,
-          total_customers: customers.total
-        });
+        return json({income_today:income.total,active_rentals:active.total,available_boats:boats.total,total_customers:customers.total});
       }
 
       // CRUD APIs
@@ -215,21 +183,10 @@ showDashboard();
       for(let i=0;i<entities.length;i++){
         const e=entities[i];
         if(url.pathname=="/api/"+e){
-          if(request.method==="GET"){
-            const all=await env.DB.prepare("SELECT * FROM "+e+" ORDER BY id DESC").all();
-            return json(all.results||[]);
-          }
-          if(request.method==="POST"){
-            const body=await request.json();
-            await env.DB.prepare("INSERT INTO "+e+" (full_name,document_id) VALUES (?,?)").bind(body.full_name,body.document_id).run();
-            return json({success:true});
-          }
+          if(request.method==="GET"){const all=await env.DB.prepare("SELECT * FROM "+e+" ORDER BY id DESC").all();return json(all.results||[]);}
+          if(request.method==="POST"){const body=await request.json();await env.DB.prepare("INSERT INTO "+e+" (full_name,document_id) VALUES (?,?)").bind(body.full_name,body.document_id).run();return json({success:true});}
         }
-        if(url.pathname.startsWith("/api/"+e+"/") && request.method==="DELETE"){
-          const id=url.pathname.split("/").pop();
-          await env.DB.prepare("DELETE FROM "+e+" WHERE id=?").bind(id).run();
-          return json({success:true});
-        }
+        if(url.pathname.startsWith("/api/"+e+"/") && request.method==="DELETE"){const id=url.pathname.split("/").pop();await env.DB.prepare("DELETE FROM "+e+" WHERE id=?").bind(id).run();return json({success:true});}
       }
 
       return json({error:"Not Found"},404);
