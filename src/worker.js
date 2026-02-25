@@ -120,7 +120,7 @@ body{
 <body>
 
 <div class="sidebar">
-  <h2>⚓ Boat Rental  --SaaS--</h2>
+  <h2>⚓ Boat Rental</h2>
 
   <div class="menu-item active">Dashboard</div>
   <div class="menu-item">Clientes</div>
@@ -274,6 +274,7 @@ loadDashboard();
     }
   }
 }
+
 
 
 
