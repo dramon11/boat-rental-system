@@ -10,9 +10,9 @@ export default {
 
     try {
 
-      /* ==============================
-         SERVIR FRONTEND ERP EN "/"
-      ===============================*/
+      /* =============================
+         FRONTEND ERP
+      ============================== */
       if (url.pathname === "/" && request.method === "GET") {
         return new Response(`
 <!DOCTYPE html>
@@ -20,81 +20,124 @@ export default {
 <head>
 <meta charset="UTF-8" />
 <title>Boat Rental ERP</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <style>
-body {
+*{box-sizing:border-box}
+body{
   margin:0;
-  font-family: 'Inter', sans-serif;
-  background:#f4f6f9;
+  font-family:'Inter',sans-serif;
+  background:#f1f5f9;
 }
-.sidebar {
-  width:220px;
+
+/* SIDEBAR */
+.sidebar{
+  width:240px;
   height:100vh;
   background:#0f172a;
-  color:white;
+  color:#fff;
   position:fixed;
-  padding:20px;
+  padding:25px 20px;
 }
-.sidebar h2 {
-  margin-bottom:30px;
+.sidebar h2{
+  margin:0 0 40px 0;
+  font-weight:700;
 }
-.sidebar button {
-  width:100%;
-  margin-bottom:10px;
-  padding:10px;
-  border:none;
+.menu-item{
+  padding:12px 14px;
   border-radius:8px;
-  background:#1e293b;
-  color:white;
+  margin-bottom:10px;
   cursor:pointer;
+  transition:.2s;
 }
-.header {
-  margin-left:220px;
-  height:60px;
+.menu-item:hover{
+  background:#1e293b;
+}
+.menu-item.active{
+  background:#2563eb;
+}
+
+/* HEADER */
+.header{
+  margin-left:240px;
+  height:65px;
   background:#1e3a8a;
-  color:white;
   display:flex;
   align-items:center;
-  padding-left:20px;
+  justify-content:space-between;
+  padding:0 30px;
+  color:white;
   font-weight:600;
 }
-.content {
-  margin-left:220px;
+
+/* CONTENT */
+.content{
+  margin-left:240px;
   padding:30px;
 }
-.cards {
+
+/* CARDS */
+.cards{
   display:grid;
-  grid-template-columns: repeat(4,1fr);
+  grid-template-columns:repeat(4,1fr);
   gap:20px;
 }
-.card {
+.card{
   background:white;
   padding:20px;
-  border-radius:12px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.05);
+  border-radius:14px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.05);
 }
-canvas {
+.card h4{
+  margin:0;
+  font-weight:600;
+  color:#64748b;
+}
+.card h2{
+  margin:10px 0 0 0;
+}
+
+/* CHART AREA */
+.charts{
   margin-top:40px;
+  display:grid;
+  grid-template-columns:repeat(2,1fr);
+  gap:30px;
+}
+.chart-box{
+  background:white;
+  padding:25px;
+  border-radius:14px;
+  box-shadow:0 6px 20px rgba(0,0,0,0.05);
+}
+.full-width{
+  grid-column:span 2;
 }
 </style>
 </head>
+
 <body>
 
 <div class="sidebar">
-  <h2>Boat ERP</h2>
-  <button>Dashboard</button>
-  <button>Clientes</button>
-  <button>Botes</button>
-  <button>Alquileres</button>
-  <button>Pagos</button>
+  <h2>⚓ BoatERP</h2>
+
+  <div class="menu-item active">Dashboard</div>
+  <div class="menu-item">Clientes</div>
+  <div class="menu-item">Botes</div>
+  <div class="menu-item">Alquileres</div>
+  <div class="menu-item">Pagos</div>
+  <div class="menu-item">Reportes</div>
+  <div class="menu-item">Configuración</div>
 </div>
 
 <div class="header">
-  Sistema Administrativo de Alquiler
+  <div>Panel Administrativo</div>
+  <div>Admin</div>
 </div>
 
 <div class="content">
+
   <div class="cards">
     <div class="card">
       <h4>Ingresos Hoy</h4>
@@ -114,10 +157,27 @@ canvas {
     </div>
   </div>
 
-  <canvas id="chart"></canvas>
+  <div class="charts">
+    <div class="chart-box">
+      <h4>Resumen General (Barras)</h4>
+      <canvas id="barChart"></canvas>
+    </div>
+
+    <div class="chart-box">
+      <h4>Tendencia (Línea)</h4>
+      <canvas id="lineChart"></canvas>
+    </div>
+
+    <div class="chart-box full-width">
+      <h4>Distribución (Pie)</h4>
+      <canvas id="pieChart"></canvas>
+    </div>
+  </div>
+
 </div>
 
 <script>
+
 async function loadDashboard(){
   const res = await fetch("/api/dashboard");
   const data = await res.json();
@@ -127,37 +187,62 @@ async function loadDashboard(){
   document.getElementById("boats").innerText = data.available_boats;
   document.getElementById("customers").innerText = data.total_customers;
 
-  new Chart(document.getElementById('chart'), {
-    type: 'bar',
-    data: {
-      labels: ['Ingresos','Activos','Disponibles','Clientes'],
-      datasets: [{
-        data: [
-          data.income_today,
-          data.active_rentals,
-          data.available_boats,
-          data.total_customers
-        ]
+  const values = [
+    data.income_today,
+    data.active_rentals,
+    data.available_boats,
+    data.total_customers
+  ];
+
+  /* BAR */
+  new Chart(document.getElementById("barChart"),{
+    type:"bar",
+    data:{
+      labels:["Ingresos","Activos","Disponibles","Clientes"],
+      datasets:[{ data:values }]
+    }
+  });
+
+  /* LINE */
+  new Chart(document.getElementById("lineChart"),{
+    type:"line",
+    data:{
+      labels:["Ingresos","Activos","Disponibles","Clientes"],
+      datasets:[{
+        data:values,
+        tension:0.4
       }]
     }
   });
+
+  /* PIE */
+  new Chart(document.getElementById("pieChart"),{
+    type:"pie",
+    data:{
+      labels:["Ingresos","Activos","Disponibles","Clientes"],
+      datasets:[{ data:values }]
+    }
+  });
+
 }
 
 loadDashboard();
+
 </script>
 
 </body>
 </html>
-        `, {
-          headers: { "Content-Type": "text/html" },
+        `,{
+          headers:{"Content-Type":"text/html"}
         });
       }
 
-      /* ==============================
-         API EXISTENTE
-      ===============================*/
+      /* =============================
+         API DASHBOARD
+      ============================== */
 
       if (url.pathname === "/api/dashboard") {
+
         const income = await env.DB.prepare(
           "SELECT IFNULL(SUM(total_amount),0) as total FROM rentals WHERE DATE(created_at)=DATE('now')"
         ).first();
@@ -182,10 +267,10 @@ loadDashboard();
         });
       }
 
-      return json({ error: "Not Found" }, 404);
+      return json({error:"Not Found"},404);
 
     } catch (err) {
-      return json({ error: err.message }, 500);
+      return json({error:err.message},500);
     }
-  },
-};
+  }
+}
