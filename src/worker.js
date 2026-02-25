@@ -1,79 +1,149 @@
-addEventListener("fetch", (event) => {
-  event.respondWith(handleRequest(event.request));
-});
+// worker.js  ──  Formato ES Modules (requerido para D1)
 
-async function handleRequest(request) {
-  const url = new URL(request.url);
+export default {
+  async fetch(request, env, ctx) {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
 
-  // Servir página principal
-  if (url.pathname === "/" || url.pathname === "/index" || url.pathname === "/index.html") {
-    return new Response(getHTML(), {
-      headers: { "Content-Type": "text/html;charset=UTF-8" }
-    });
-  }
-
-  // API de clientes
-  if (url.pathname === "/api/customers" || url.pathname.startsWith("/api/customers/")) {
-    // ────────────────────────────────────────────
-    // GET    /api/customers          → lista todos
-    // GET    /api/customers/123      → obtiene uno (opcional)
-    // POST   /api/customers          → crea
-    // PUT    /api/customers/123      → actualiza
-    // DELETE /api/customers/123      → elimina
-    // ────────────────────────────────────────────
-
-    if (request.method === "GET") {
-      // Aquí conectarías tu base de datos real (D1, KV, DO, PostgreSQL via TCP, etc)
-      // Por ahora devolvemos array vacío o datos de prueba
-      const fakeData = [
-        // { id: 1, name: "Juan Pérez", document_id: "40212345678", phone: "809-555-1234" },
-      ];
-      return Response.json(fakeData);
+    // ────────────────────────────────────────────────
+    //                PÁGINA PRINCIPAL (HTML)
+    // ────────────────────────────────────────────────
+    if (pathname === "/" || pathname === "/index" || pathname === "/index.html") {
+      return new Response(getHTML(), {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      });
     }
 
-    if (request.method === "POST") {
-      try {
-        const data = await request.json();
-        // Aquí INSERT en tu base de datos
-        // Ejemplo: await env.DB.prepare("INSERT INTO customers ...").bind(...).run();
-        console.log("Creando cliente:", data);
-        return Response.json({ success: true, message: "Cliente creado" }, { status: 201 });
-      } catch (err) {
-        return Response.json({ error: "Error al crear cliente" }, { status: 400 });
-      }
-    }
+    // ────────────────────────────────────────────────
+    //                     API /clientes
+    // ────────────────────────────────────────────────
+    if (pathname === "/api/customers" || pathname.startsWith("/api/customers/")) {
+      const pathParts = pathname.split("/");
+      const id = pathParts.length > 3 && !isNaN(pathParts[3]) ? pathParts[3] : null;
 
-    if (request.method === "PUT" || request.method === "DELETE") {
-      const id = url.pathname.split("/").pop();
-      if (!id || isNaN(id)) {
-        return Response.json({ error: "ID inválido" }, { status: 400 });
-      }
-
-      if (request.method === "PUT") {
+      // GET ── Lista todos los clientes
+      if (request.method === "GET") {
         try {
-          const data = await request.json();
-          // Aquí UPDATE en base de datos WHERE id = ?
-          console.log("Actualizando cliente", id, data);
-          return Response.json({ success: true, message: "Cliente actualizado" });
+          let query = "SELECT * FROM customers";
+          let params = [];
+
+          if (id) {
+            query += " WHERE id = ?";
+            params.push(id);
+          } else {
+            query += " ORDER BY id DESC";
+          }
+
+          const { results } = await env.DB.prepare(query)
+            .bind(...params)
+            .all();
+
+          return Response.json(results || (id ? null : []));
         } catch (err) {
-          return Response.json({ error: "Error al actualizar" }, { status: 400 });
+          console.error("Error GET customers:", err);
+          return Response.json({ error: "Error al obtener clientes" }, { status: 500 });
         }
       }
 
-      if (request.method === "DELETE") {
-        // Aquí DELETE FROM customers WHERE id = ?
-        console.log("Eliminando cliente", id);
-        return Response.json({ success: true, message: "Cliente eliminado" });
+      // POST ── Crear cliente nuevo
+      if (request.method === "POST" && !id) {
+        try {
+          const body = await request.json();
+          const { name, document_id, phone } = body;
+
+          if (!name || !document_id) {
+            return Response.json(
+              { error: "Los campos 'name' y 'document_id' son obligatorios" },
+              { status: 400 }
+            );
+          }
+
+          const result = await env.DB.prepare(
+            "INSERT INTO customers (name, document_id, phone) VALUES (?, ?, ?)"
+          )
+            .bind(name.trim(), document_id.trim(), phone?.trim() || null)
+            .run();
+
+          return Response.json(
+            { success: true, id: result.meta.last_row_id },
+            { status: 201 }
+          );
+        } catch (err) {
+          console.error("Error POST customer:", err);
+          return Response.json({ error: "Error al crear cliente" }, { status: 500 });
+        }
+      }
+
+      // PUT ── Actualizar cliente existente
+      if (request.method === "PUT" && id) {
+        try {
+          const body = await request.json();
+          const { name, document_id, phone } = body;
+
+          if (!name && !document_id && !phone) {
+            return Response.json({ error: "Nada que actualizar" }, { status: 400 });
+          }
+
+          let query = "UPDATE customers SET ";
+          const values = [];
+          const params = [];
+
+          if (name !== undefined) {
+            values.push("name = ?");
+            params.push(name.trim());
+          }
+          if (document_id !== undefined) {
+            values.push("document_id = ?");
+            params.push(document_id.trim());
+          }
+          if (phone !== undefined) {
+            values.push("phone = ?");
+            params.push(phone?.trim() || null);
+          }
+
+          query += values.join(", ") + " WHERE id = ?";
+          params.push(id);
+
+          const { meta } = await env.DB.prepare(query).bind(...params).run();
+
+          if (meta.changes === 0) {
+            return Response.json({ error: "Cliente no encontrado" }, { status: 404 });
+          }
+
+          return Response.json({ success: true });
+        } catch (err) {
+          console.error("Error PUT customer:", err);
+          return Response.json({ error: "Error al actualizar" }, { status: 500 });
+        }
+      }
+
+      // DELETE ── Eliminar cliente
+      if (request.method === "DELETE" && id) {
+        try {
+          const { meta } = await env.DB.prepare("DELETE FROM customers WHERE id = ?")
+            .bind(id)
+            .run();
+
+          if (meta.changes === 0) {
+            return Response.json({ error: "Cliente no encontrado" }, { status: 404 });
+          }
+
+          return Response.json({ success: true });
+        } catch (err) {
+          console.error("Error DELETE customer:", err);
+          return Response.json({ error: "Error al eliminar" }, { status: 500 });
+        }
       }
     }
-  }
 
-  return new Response("Not Found", { status: 404 });
-}
+    // 404 para todo lo demás
+    return new Response("Not Found", { status: 404 });
+  },
+};
 
-// ────────────────────────────────────────
-//                 FRONTEND HTML
-// ────────────────────────────────────────
+// ────────────────────────────────────────────────
+//               HTML embebido (frontend)
+// ────────────────────────────────────────────────
 function getHTML() {
   return `<!DOCTYPE html>
 <html lang="es">
@@ -83,82 +153,67 @@ function getHTML() {
   <title>ERP Alquiler de Botes</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    body{font-family:system-ui,sans-serif;margin:0;background:#f5f5f5;color:#333;}
-    .container{max-width:1400px;margin:0 auto;padding:16px;}
-    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px;margin-bottom:24px;}
-    .card{background:white;padding:20px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);text-align:center;}
-    .card h4{margin:0 0 8px;color:#555;font-weight:500;}
-    .card h2{margin:0;font-size:2.1rem;}
-    h2{margin:0 0 16px;}
-    .actions{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:16px;}
-    .btn{padding:8px 16px;border:none;border-radius:6px;cursor:pointer;font-weight:500;}
+    body{font-family:system-ui,sans-serif;margin:0;background:#f8f9fa;color:#212529;}
+    .container{max-width:1400px;margin:0 auto;padding:1.5rem;}
+    .nav-buttons{display:flex;gap:1rem;margin-bottom:1.5rem;}
+    .btn{padding:0.5rem 1rem;border:none;border-radius:0.375rem;cursor:pointer;font-weight:500;}
     .btn-primary{background:#0d6efd;color:white;}
     .btn-success{background:#198754;color:white;}
     .btn-danger{background:#dc3545;color:white;}
-    .btn-outline{background:transparent;border:1px solid #ccc;}
-    input{padding:8px 12px;border:1px solid #ddd;border-radius:6px;font-size:1rem;}
-    table{width:100%;border-collapse:collapse;background:white;border-radius:8px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.08);}
-    th,td{padding:12px;text-align:left;}
-    th{background:#f1f3f5;font-weight:600;color:#444;}
-    tr:nth-child(even){background:#fafafa;}
+    .btn-outline{border:1px solid #6c757d;color:#6c757d;background:transparent;}
+    .card{background:white;border-radius:0.5rem;box-shadow:0 0.125rem 0.25rem rgba(0,0,0,0.075);padding:1.25rem;margin-bottom:1rem;}
+    .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:1rem;}
+    table{width:100%;border-collapse:collapse;background:white;border-radius:0.5rem;overflow:hidden;}
+    th,td{padding:0.75rem;text-align:left;}
+    th{background:#e9ecef;font-weight:600;}
+    tr:nth-child(even){background:#f8f9fa;}
     .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;z-index:1000;}
-    .modal-content{background:white;padding:24px;border-radius:12px;width:100%;max-width:420px;}
-    .modal-content input{width:100%;margin:8px 0;padding:10px;box-sizing:border-box;}
-    .modal-buttons{display:flex;gap:12px;margin-top:20px;}
+    .modal-content{background:white;padding:1.5rem;border-radius:0.5rem;width:100%;max-width:450px;}
+    .modal-content input{width:100%;padding:0.5rem;margin:0.5rem 0;box-sizing:border-box;border:1px solid #ced4da;border-radius:0.375rem;}
+    .modal-buttons{display:flex;gap:1rem;margin-top:1.25rem;}
   </style>
 </head>
 <body>
 
 <div class="container">
-  <div class="actions">
+  <div class="nav-buttons">
     <button class="btn btn-primary" onclick="showDashboard()">Dashboard</button>
     <button class="btn btn-primary" onclick="loadCustomers()">Clientes</button>
   </div>
 
-  <!-- Dashboard -->
   <div id="dashboard" style="display:block;">
     <div class="cards">
-      <div class="card"><h4>Ingresos Hoy</h4><h2 id="income">$0</h2></div>
-      <div class="card"><h4>Alquileres Activos</h4><h2 id="active">0</h2></div>
-      <div class="card"><h4>Botes Disponibles</h4><h2 id="boats">0</h2></div>
-      <div class="card"><h4>Total Clientes</h4><h2 id="customers">0</h2></div>
+      <div class="card"><h5>Ingresos Hoy</h5><h3 id="income">$0</h3></div>
+      <div class="card"><h5>Alquileres Activos</h5><h3 id="active">0</h3></div>
+      <div class="card"><h5>Botes Disponibles</h5><h3 id="boats">0</h3></div>
+      <div class="card"><h5>Total Clientes</h5><h3 id="customers">0</h3></div>
     </div>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:16px;">
-      <div style="background:white;padding:16px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <h4>Resumen General (Barras)</h4>
-        <canvas id="barChart"></canvas>
-      </div>
-      <div style="background:white;padding:16px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);">
-        <h4>Tendencia (Línea)</h4>
-        <canvas id="lineChart"></canvas>
-      </div>
-      <div style="background:white;padding:16px;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,0.08);grid-column:1/-1;">
-        <h4>Distribución (Pie)</h4>
-        <canvas id="pieChart"></canvas>
-      </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(400px,1fr));gap:1.5rem;margin-top:1.5rem;">
+      <div class="card"><h5>Resumen Ingresos</h5><canvas id="barChart"></canvas></div>
+      <div class="card"><h5>Tendencia Alquileres</h5><canvas id="lineChart"></canvas></div>
+      <div class="card" style="grid-column:1/-1;"><h5>Distribución Estado Botes</h5><canvas id="pieChart"></canvas></div>
     </div>
   </div>
 
-  <!-- Módulo Clientes -->
   <div id="customersModule" style="display:none;">
-    <div class="actions" style="justify-content:space-between;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
       <h2>Clientes</h2>
-      <div style="display:flex;gap:12px;align-items:center;">
-        <input id="searchInput" placeholder="Buscar cliente..." style="min-width:220px;">
+      <div style="display:flex;gap:0.75rem;">
+        <input id="searchInput" placeholder="Buscar..." style="padding:0.5rem;border:1px solid #ced4da;border-radius:0.375rem;">
         <button class="btn btn-success" onclick="openCustomerModal()">+ Nuevo Cliente</button>
       </div>
     </div>
-    <div id="customerTable">Cargando clientes...</div>
+    <div id="customerTable" class="card">Cargando clientes...</div>
   </div>
 </div>
 
 <!-- Modal -->
 <div id="customerModal" class="modal">
   <div class="modal-content">
-    <h3 id="modalTitle">Nuevo Cliente</h3>
-    <input id="customerName"    placeholder="Nombre completo" required>
-    <input id="customerDoc"     placeholder="Cédula / RNC / Pasaporte" required>
-    <input id="customerPhone"   placeholder="Teléfono (WhatsApp preferido)">
+    <h4 id="modalTitle">Nuevo Cliente</h4>
+    <input id="customerName" placeholder="Nombre completo" required>
+    <input id="customerDoc" placeholder="Cédula / RNC / Pasaporte" required>
+    <input id="customerPhone" placeholder="Teléfono">
     <div class="modal-buttons">
       <button class="btn btn-success" onclick="saveCustomer()">Guardar</button>
       <button class="btn btn-outline" onclick="closeCustomerModal()">Cancelar</button>
@@ -167,10 +222,8 @@ function getHTML() {
 </div>
 
 <script>
-// ──────────────── Variables globales ────────────────
 let editingId = null;
 
-// ──────────────── Navegación ────────────────
 function showDashboard() {
   document.getElementById('dashboard').style.display = 'block';
   document.getElementById('customersModule').style.display = 'none';
@@ -182,45 +235,44 @@ async function loadCustomers() {
   await fetchCustomers();
 }
 
-// ──────────────── CRUD Clientes ────────────────
 async function fetchCustomers() {
   try {
     const res = await fetch('/api/customers');
-    if (!res.ok) throw new Error('Error de red');
+    if (!res.ok) throw new Error(res.status);
     const data = await res.json();
     renderCustomerTable(data);
-  } catch (err) {
-    document.getElementById('customerTable').innerHTML = '<p style="color:red">No se pudieron cargar los clientes</p>';
+  } catch (e) {
+    document.getElementById('customerTable').innerHTML = '<p style="color:#dc3545">Error al cargar clientes</p>';
   }
 }
 
 function renderCustomerTable(customers) {
-  const container = document.getElementById('customerTable');
-  if (customers.length === 0) {
-    container.innerHTML = '<p style="text-align:center;color:#777;padding:40px;">No hay clientes registrados aún</p>';
+  const el = document.getElementById('customerTable');
+  if (!customers?.length) {
+    el.innerHTML = '<p style="text-align:center;padding:2rem;color:#6c757d;">No hay clientes registrados</p>';
     return;
   }
 
-  let html = '<table><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th style="width:140px">Acciones</th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th style="width:130px">Acciones</th></tr></thead><tbody>';
   for (const c of customers) {
     html += \`<tr>
-      <td>\${c.name || ''}</td>
-      <td>\${c.document_id || ''}</td>
+      <td>\${(c.name||'').replace(/</g,'&lt;')}</td>
+      <td>\${(c.document_id||'').replace(/</g,'&lt;')}</td>
       <td>\${c.phone || '—'}</td>
       <td>
-        <button class="btn btn-primary" style="font-size:0.85rem;padding:4px 10px;" onclick="editCustomer(\${c.id})">Editar</button>
-        <button class="btn btn-danger"  style="font-size:0.85rem;padding:4px 10px;" onclick="deleteCustomer(\${c.id})">Eliminar</button>
+        <button class="btn btn-primary" style="font-size:0.85rem;padding:0.35rem 0.65rem;" onclick="editCustomer(\${c.id})">Editar</button>
+        <button class="btn btn-danger"  style="font-size:0.85rem;padding:0.35rem 0.65rem;" onclick="deleteCustomer(\${c.id})">Eliminar</button>
       </td>
     </tr>\`;
   }
   html += '</tbody></table>';
-  container.innerHTML = html;
+  el.innerHTML = html;
 }
 
-function openCustomerModal(isEdit = false) {
+function openCustomerModal(edit = false) {
   document.getElementById('customerModal').style.display = 'flex';
-  document.getElementById('modalTitle').textContent = isEdit ? 'Editar Cliente' : 'Nuevo Cliente';
-  if (!isEdit) {
+  document.getElementById('modalTitle').textContent = edit ? 'Editar Cliente' : 'Nuevo Cliente';
+  if (!edit) {
     document.getElementById('customerName').value = '';
     document.getElementById('customerDoc').value = '';
     document.getElementById('customerPhone').value = '';
@@ -235,104 +287,86 @@ function closeCustomerModal() {
 async function editCustomer(id) {
   try {
     const res = await fetch('/api/customers');
-    const customers = await res.json();
-    const customer = customers.find(c => c.id === id);
-    if (!customer) return alert('Cliente no encontrado');
+    const list = await res.json();
+    const c = list.find(x => x.id === id);
+    if (!c) return alert('Cliente no encontrado');
 
-    document.getElementById('customerName').value  = customer.name    || '';
-    document.getElementById('customerDoc').value   = customer.document_id || '';
-    document.getElementById('customerPhone').value = customer.phone   || '';
+    document.getElementById('customerName').value  = c.name    || '';
+    document.getElementById('customerDoc').value   = c.document_id || '';
+    document.getElementById('customerPhone').value = c.phone   || '';
     editingId = id;
     openCustomerModal(true);
-  } catch (err) {
-    alert('No se pudo cargar la información del cliente');
+  } catch {
+    alert('No se pudo cargar el cliente');
   }
 }
 
 async function saveCustomer() {
-  const name   = document.getElementById('customerName').value.trim();
-  const doc    = document.getElementById('customerDoc').value.trim();
-  const phone  = document.getElementById('customerPhone').value.trim();
+  const name  = document.getElementById('customerName').value.trim();
+  const doc   = document.getElementById('customerDoc').value.trim();
+  const phone = document.getElementById('customerPhone').value.trim();
 
   if (!name || !doc) {
     alert('Nombre y documento son obligatorios');
     return;
   }
 
-  const payload = { name, document_id: doc, phone };
+  const payload = { name, document_id: doc, phone: phone || null };
 
   try {
-    let res;
-    if (editingId) {
-      // UPDATE
-      res = await fetch(\`/api/customers/\${editingId}\`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    } else {
-      // CREATE
-      res = await fetch('/api/customers', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
-    }
+    const url = editingId ? \`/api/customers/\${editingId}\` : '/api/customers';
+    const method = editingId ? 'PUT' : 'POST';
 
-    if (!res.ok) throw new Error('Error en el servidor');
+    const res = await fetch(url, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error(await res.text());
     closeCustomerModal();
-    await fetchCustomers(); // refrescar tabla
+    await fetchCustomers();
   } catch (err) {
-    alert('No se pudo guardar el cliente');
+    alert('Error al guardar: ' + err.message);
   }
 }
 
 async function deleteCustomer(id) {
-  if (!confirm('¿Realmente deseas eliminar este cliente?')) return;
+  if (!confirm('¿Eliminar este cliente permanentemente?')) return;
 
   try {
     const res = await fetch(\`/api/customers/\${id}\`, { method: 'DELETE' });
-    if (!res.ok) throw new Error('Error al eliminar');
+    if (!res.ok) throw new Error();
     await fetchCustomers();
-  } catch (err) {
+  } catch {
     alert('No se pudo eliminar el cliente');
   }
 }
 
-// ──────────────── Gráficos de ejemplo ────────────────
+// Gráficos de ejemplo
 function initCharts() {
   new Chart(document.getElementById('barChart'), {
     type: 'bar',
-    data: {
-      labels: ['Ene','Feb','Mar','Abr','May','Jun'],
-      datasets: [{ label: 'Ingresos', data: [12000,19500,14000,22000,18000,25000], backgroundColor: '#198754' }]
-    },
-    options: { responsive: true, plugins: { legend: { display: false } } }
+    data: { labels: ['Ene','Feb','Mar','Abr'], datasets: [{label:'Ingresos',data:[12000,18500,14000,23000],backgroundColor:'#198754'}] },
+    options: { responsive: true, plugins: { legend: {display:false} } }
   });
 
   new Chart(document.getElementById('lineChart'), {
     type: 'line',
-    data: {
-      labels: ['Ene','Feb','Mar','Abr','May','Jun'],
-      datasets: [{ label: 'Alquileres', data: [8,14,11,18,15,22], borderColor: '#0d6efd', tension: 0.3 }]
-    },
+    data: { labels: ['Ene','Feb','Mar','Abr'], datasets: [{label:'Alquileres',data:[7,13,10,19],borderColor:'#0d6efd',tension:0.3}] },
     options: { responsive: true }
   });
 
   new Chart(document.getElementById('pieChart'), {
     type: 'pie',
-    data: {
-      labels: ['Disponibles', 'Alquilados', 'Mantenimiento'],
-      datasets: [{ data: [12,5,2], backgroundColor: ['#198754','#dc3545','#ffc107'] }]
-    },
+    data: { labels: ['Disponibles','Alquilados','Mantenimiento'], datasets: [{data:[14,6,3],backgroundColor:['#198754','#dc3545','#ffc107']}] },
     options: { responsive: true }
   });
 }
 
-// Inicio
 window.addEventListener('load', () => {
   initCharts();
-  // Opcional: loadCustomers(); si quieres que inicie en clientes
+  // loadCustomers();  // descomenta si quieres iniciar en la lista de clientes
 });
 </script>
 </body>
