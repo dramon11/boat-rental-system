@@ -239,6 +239,139 @@ if (url.pathname.startsWith("/api/customers/") && request.method === "DELETE") {
 
 loadDashboard();
 
+async function loadCustomers(){
+
+  document.querySelector(".content").innerHTML = `
+    <h2>Gestión de Clientes</h2>
+
+    <div style="margin:20px 0; display:flex; justify-content:space-between;">
+      <input id="searchInput" placeholder="Buscar por nombre o documento..."
+        style="padding:10px;width:300px;border-radius:8px;border:1px solid #ccc"/>
+      <button onclick="openModal()" style="padding:10px 15px;
+        background:#2563eb;color:white;border:none;border-radius:8px;cursor:pointer">
+        + Nuevo Cliente
+      </button>
+    </div>
+
+    <div id="customerTable"></div>
+
+    <div id="modal" style="display:none;position:fixed;top:0;left:0;
+      width:100%;height:100%;background:rgba(0,0,0,.4);
+      align-items:center;justify-content:center;">
+      <div style="background:white;padding:30px;border-radius:12px;width:400px">
+        <h3>Nuevo Cliente</h3>
+        <input id="name" placeholder="Nombre completo" style="width:100%;margin-bottom:10px;padding:8px"/>
+        <input id="doc" placeholder="Documento" style="width:100%;margin-bottom:10px;padding:8px"/>
+        <input id="phone" placeholder="Teléfono" style="width:100%;margin-bottom:10px;padding:8px"/>
+        <input id="email" placeholder="Email" style="width:100%;margin-bottom:10px;padding:8px"/>
+        <button onclick="saveCustomer()" style="background:#16a34a;color:white;padding:8px 12px;border:none;border-radius:8px">Guardar</button>
+        <button onclick="closeModal()" style="margin-left:10px;padding:8px 12px">Cancelar</button>
+      </div>
+    </div>
+
+    <div id="toast" style="position:fixed;bottom:20px;right:20px;
+      background:#16a34a;color:white;padding:12px 20px;border-radius:8px;display:none"></div>
+  `;
+
+  fetchCustomers();
+}
+
+async function fetchCustomers(){
+  const res = await fetch("/api/customers");
+  const data = await res.json();
+
+  renderTable(data);
+
+  document.getElementById("searchInput").addEventListener("input", e=>{
+    const value = e.target.value.toLowerCase();
+    const filtered = data.filter(c =>
+      c.full_name.toLowerCase().includes(value) ||
+      c.document_id.toLowerCase().includes(value)
+    );
+    renderTable(filtered);
+  });
+}
+
+function renderTable(data){
+  let html = `
+    <table style="width:100%;border-collapse:collapse;background:white;border-radius:12px;overflow:hidden">
+      <tr style="background:#f1f5f9">
+        <th style="padding:10px;text-align:left">Nombre</th>
+        <th>Documento</th>
+        <th>Teléfono</th>
+        <th>Email</th>
+        <th>Acciones</th>
+      </tr>
+  `;
+
+  data.forEach(c=>{
+    html+=`
+      <tr style="border-top:1px solid #eee">
+        <td style="padding:10px">${c.full_name}</td>
+        <td>${c.document_id}</td>
+        <td>${c.phone || ''}</td>
+        <td>${c.email || ''}</td>
+        <td>
+          <button onclick="deleteCustomer(${c.id})"
+            style="background:#dc2626;color:white;border:none;padding:5px 10px;border-radius:6px;cursor:pointer">
+            Eliminar
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  html+="</table>";
+  document.getElementById("customerTable").innerHTML = html;
+}
+
+function openModal(){
+  document.getElementById("modal").style.display="flex";
+}
+
+function closeModal(){
+  document.getElementById("modal").style.display="none";
+}
+
+async function saveCustomer(){
+  const body={
+    full_name:document.getElementById("name").value,
+    document_id:document.getElementById("doc").value,
+    phone:document.getElementById("phone").value,
+    email:document.getElementById("email").value
+  };
+
+  const res = await fetch("/api/customers",{
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify(body)
+  });
+
+  if(res.ok){
+    showToast("Cliente creado correctamente");
+    closeModal();
+    fetchCustomers();
+  }
+}
+
+async function deleteCustomer(id){
+  if(!confirm("¿Eliminar cliente?")) return;
+
+  await fetch("/api/customers/"+id,{
+    method:"DELETE"
+  });
+
+  showToast("Cliente eliminado");
+  fetchCustomers();
+}
+
+function showToast(msg){
+  const toast = document.getElementById("toast");
+  toast.innerText=msg;
+  toast.style.display="block";
+  setTimeout(()=>toast.style.display="none",3000);
+}
+
 </script>
 
 </body>
@@ -285,6 +418,7 @@ loadDashboard();
     }
   }
 }
+
 
 
 
