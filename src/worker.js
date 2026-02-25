@@ -19,7 +19,7 @@ export default {
 <html>
 <head>
 <meta charset="UTF-8" />
-<title>Boat Rental Saas</title>
+<title>Boat Rental   --Saas--</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -274,4 +274,5 @@ loadDashboard();
     }
   }
 }
+
 
