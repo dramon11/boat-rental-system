@@ -4,5 +4,6 @@ compatibility_date = "2024-12-01"
 
 [[d1_databases]]
 binding = "DB"
-database_name = "boat_rental_db"
-database_id = "YOUR_D1_DATABASE_ID"
+database_name = "botes"
+database_id = "84cc1b5c-7275-475b-8e21-80d0be92937b"
+
