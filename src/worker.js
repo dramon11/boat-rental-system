@@ -175,10 +175,16 @@ function openCustomerModal(){document.getElementById("customerModal").classList.
 function closeCustomerModal(){document.getElementById("customerModal").classList.remove("active");}
 
 async function saveCustomer(){
-const body={full_name:document.getElementById("name").value,document_id:document.getElementById("doc").value,phone:document.getElementById("phone").value,email:document.getElementById("email").value};
-const res=await fetch("/api/customers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+try {
+const name=document.getElementById("name").value;
+const doc=document.getElementById("doc").value;
+const phone=document.getElementById("phone").value;
+const email=document.getElementById("email").value;
+if(!name||!doc) {showToast("Nombre y Documento son obligatorios","error");return;}
+const res=await fetch("/api/customers",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({full_name:name,document_id:doc,phone,email})});
 if(res.ok){showToast("Cliente creado correctamente","success");closeCustomerModal();fetchCustomers();}
-else showToast("Error al crear cliente","error");
+else {const err=await res.json();showToast(err?.error||"Error creando cliente","error");}
+} catch(err){showToast(err.message,"error");}
 }
 
 async function deleteCustomer(id){
@@ -219,8 +225,9 @@ loadDashboardData();
         }
         if(request.method==="POST"){
           const data=await request.json();
+          if(!data.full_name || !data.document_id) return json({error:"Nombre y documento son requeridos"},400);
           await env.DB.prepare("INSERT INTO customers (full_name,document_id,phone,email) VALUES (?,?,?,?)")
-            .bind(data.full_name,data.document_id,data.phone,data.email).run();
+            .bind(data.full_name,data.document_id,data.phone||"",data.email||"").run();
           return json({success:true});
         }
       }
