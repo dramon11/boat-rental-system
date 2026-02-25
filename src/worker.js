@@ -1,3 +1,43 @@
+if (url.pathname === "/" && request.method === "GET") {
+  return new Response(`
+  <!DOCTYPE html>
+  <html>
+  <head>
+    <title>Boat Rental ERP</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+      body{margin:0;font-family:Inter;background:#f4f6f9}
+      .sidebar{width:220px;height:100vh;background:#0b3d91;color:#fff;position:fixed;padding:20px}
+      .main{margin-left:240px;padding:20px}
+      .card{background:#fff;padding:20px;border-radius:12px;
+      box-shadow:0 4px 12px rgba(0,0,0,.08);margin-bottom:20px}
+    </style>
+  </head>
+  <body>
+    <div class="sidebar">
+      <h2>BoatRent ERP</h2>
+    </div>
+    <div class="main">
+      <h1>Dashboard</h1>
+      <div class="card" id="data">Cargando...</div>
+    </div>
+
+    <script>
+      fetch('/api/dashboard')
+        .then(r=>r.json())
+        .then(d=>{
+          document.getElementById('data').innerHTML =
+          "Ingresos Hoy: $" + d.income_today + "<br>" +
+          "Alquileres Activos: " + d.active_rentals + "<br>" +
+          "Botes Disponibles: " + d.available_boats + "<br>" +
+          "Clientes: " + d.total_customers;
+        });
+    </script>
+  </body>
+  </html>
+  `, { headers: { "Content-Type": "text/html" } });
+}
+
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
@@ -97,3 +137,4 @@ export default {
     }
   },
 };
+
