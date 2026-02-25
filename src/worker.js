@@ -215,6 +215,17 @@ async function loadDashboard(){
     }
   });
 
+  /* DELETE CUSTOMER */
+if (url.pathname.startsWith("/api/customers/") && request.method === "DELETE") {
+  const id = url.pathname.split("/").pop();
+
+  await env.DB.prepare("DELETE FROM customers WHERE id=?")
+    .bind(id)
+    .run();
+
+  return json({ success: true });
+}
+
   /* PIE */
   new Chart(document.getElementById("pieChart"),{
     type:"pie",
@@ -274,6 +285,7 @@ loadDashboard();
     }
   }
 }
+
 
 
 
