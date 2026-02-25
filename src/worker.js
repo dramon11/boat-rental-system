@@ -1,113 +1,205 @@
-// worker.js (solo muestro las partes cambiadas, el resto igual que antes)
+addEventListener("fetch", (event) => {
+  event.respondWith(handleRequest(event.request));
+});
 
-export default {
-  async fetch(request, env, ctx) {
-    // ... el resto del código igual (API, CRUD clientes, etc.)
+async function handleRequest(request) {
+  const url = new URL(request.url);
 
-    if (["/", "/index", "/index.html"].includes(url.pathname)) {
-      return new Response(getHTML(), {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-      });
+  if (url.pathname === "/" || url.pathname === "/index") {
+    return new Response(getHTML(), { headers: { "Content-Type": "text/html;charset=UTF-8" } });
+  }
+
+  if (url.pathname.startsWith("/api/customers")) {
+    if (request.method === "GET") {
+      // Reemplaza con tu fuente de datos real
+      return new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" } });
     }
+    if (request.method === "POST") {
+      const data = await request.json();
+      // Aquí agregarías a tu DB real
+      return new Response(JSON.stringify({ success: true }));
+    }
+  }
 
-    // ... resto igual
-  },
-};
+  return new Response("Not found", { status: 404 });
+}
 
 function getHTML() {
-  return `<!DOCTYPE html>
+  return `
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>ERP Alquiler de Botes - Dramon</title>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style>
-    body { margin:0; font-family:system-ui, sans-serif; background:#f1f3f5; color:#212529; }
-    .layout { display:flex; min-height:100vh; }
-    .sidebar {
-      width:220px; background:#343a40; color:white; padding:1.5rem 1rem;
-      flex-shrink:0; box-shadow:2px 0 5px rgba(0,0,0,0.1);
-    }
-    .sidebar h3 { margin:0 0 1.5rem; font-size:1.4rem; text-align:center; }
-    .sidebar ul { list-style:none; padding:0; margin:0; }
-    .sidebar li { margin:0.5rem 0; }
-    .sidebar a {
-      color:white; text-decoration:none; display:block; padding:0.6rem 1rem;
-      border-radius:0.375rem; cursor:pointer;
-    }
-    .sidebar a:hover, .sidebar a.active { background:#495057; }
-    .main { flex:1; padding:1.5rem; }
-    .header { margin-bottom:1.5rem; }
-    .header h1 { margin:0; font-size:1.8rem; }
-    .content { background:white; border-radius:0.5rem; padding:1.5rem; box-shadow:0 0.125rem 0.25rem rgba(0,0,0,0.075); }
-    .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:1rem; margin-bottom:2rem; }
-    .card { background:#fff; padding:1.25rem; border-radius:0.5rem; box-shadow:0 0.125rem 0.25rem rgba(0,0,0,0.075); text-align:center; }
-    /* ... resto de estilos de tablas, modal, botones como antes ... */
-  </style>
+<meta charset="UTF-8">
+<title>ERP de Alquiler de Botes</title>
+<style>
+body{font-family:sans-serif;margin:0;padding:0;background:#f4f4f4;}
+.cards{display:flex;gap:10px;margin:10px;}
+.card{background:#fff;padding:20px;flex:1;border-radius:8px;box-shadow:0 0 5px #ccc;}
+.charts{display:flex;gap:10px;margin:10px;flex-wrap:wrap;}
+.chart-box{background:#fff;padding:10px;border-radius:8px;flex:1;min-width:300px;}
+.full-width{flex:1 1 100%;}
+.btn-success{padding:5px 10px;background:#28a745;color:#fff;border:none;border-radius:5px;cursor:pointer;}
+.input-search{padding:5px;border-radius:5px;border:1px solid #ccc;margin-right:5px;}
+table{width:100%;border-collapse:collapse;}
+th,td{padding:8px;text-align:left;border-bottom:1px solid #ccc;}
+th{background:#eee;}
+button.edit-btn{margin-right:5px;background:#007bff;color:#fff;padding:3px 8px;border:none;border-radius:4px;cursor:pointer;}
+button.delete-btn{background:#dc3545;color:#fff;padding:3px 8px;border:none;border-radius:4px;cursor:pointer;}
+</style>
 </head>
 <body>
 
-<div class="layout">
-  <!-- Sidebar / Menú vertical -->
-  <nav class="sidebar">
-    <h3>ERP Botes</h3>
-    <ul>
-      <li><a onclick="showDashboard()" class="active">Dashboard</a></li>
-      <li><a onclick="loadCustomers()">Clientes</a></li>
-      <li><a>Botes</a></li>
-      <li><a>Alquileres</a></li>
-      <li><a>Reportes</a></li>
-      <li><a>Configuración</a></li>
-    </ul>
-  </nav>
+<div id="mainContent">
 
-  <!-- Contenido principal -->
-  <main class="main">
-    <div class="header">
-      <h1>Bienvenido, Dramon</h1>
-      <p style="color:#6c757d; margin:0.25rem 0 0;">Sistema de Alquiler de Botes • Santo Domingo</p>
+  <!-- DASHBOARD -->
+  <div id="dashboardModule">
+    <div class="cards">
+      <div class="card"><h4>Ingresos Hoy</h4><h2 id="income">$0</h2></div>
+      <div class="card"><h4>Alquileres Activos</h4><h2 id="active">0</h2></div>
+      <div class="card"><h4>Botes Disponibles</h4><h2 id="boats">0</h2></div>
+      <div class="card"><h4>Total Clientes</h4><h2 id="customers">0</h2></div>
     </div>
+    <div class="charts">
+      <div class="chart-box"><h4>Resumen General (Barras)</h4><canvas id="barChart"></canvas></div>
+      <div class="chart-box"><h4>Tendencia (Línea)</h4><canvas id="lineChart"></canvas></div>
+      <div class="chart-box full-width"><h4>Distribución (Pie)</h4><canvas id="pieChart"></canvas></div>
+    </div>
+  </div>
 
-    <div id="dashboard" class="content" style="display:block;">
-      <div class="cards">
-        <div class="card"><h5>Ingresos Hoy</h5><h3 id="income">$0</h3></div>
-        <div class="card"><h5>Alquileres Activos</h5><h3 id="active">0</h3></div>
-        <div class="card"><h5>Botes Disponibles</h5><h3 id="boats">0</h3></div>
-        <div class="card"><h5>Total Clientes</h5><h3 id="customers">0</h3></div>
-      </div>
-      <!-- Gráficos ... igual que antes -->
-      <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(400px,1fr)); gap:1.5rem;">
-        <div class="card"><h5>Resumen Ingresos</h5><canvas id="barChart"></canvas></div>
-        <div class="card"><h5>Tendencia Alquileres</h5><canvas id="lineChart"></canvas></div>
-        <div class="card" style="grid-column:1/-1;"><h5>Distribución Estado Botes</h5><canvas id="pieChart"></canvas></div>
+  <!-- CLIENTES -->
+  <div id="customersModule" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+      <h2>Clientes</h2>
+      <div>
+        <input id="searchInput" class="input-search" placeholder="Buscar..." />
+        <button class="btn-success" onclick="openCustomerModal()">+ Nuevo Cliente</button>
       </div>
     </div>
-
-    <div id="customersModule" class="content" style="display:none;">
-      <!-- ... el módulo de clientes igual que antes ... -->
+    <div class="card">
+      <div id="customerTable">Cargando clientes...</div>
     </div>
-  </main>
+  </div>
+
 </div>
 
-<!-- Modal de cliente igual que antes -->
+<!-- MODAL -->
+<div id="customerModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+background:#fff;padding:20px;border-radius:10px;box-shadow:0 0 10px #000;">
+  <h3 id="modalTitle">Nuevo Cliente</h3>
+  <input id="customerName" placeholder="Nombre" /><br/><br/>
+  <input id="customerDoc" placeholder="Documento" /><br/><br/>
+  <input id="customerPhone" placeholder="Teléfono" /><br/><br/>
+  <button onclick="saveCustomer()">Guardar</button>
+  <button onclick="closeCustomerModal()">Cerrar</button>
+</div>
 
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-// ... el mismo JavaScript de antes, solo ajustamos showDashboard y loadCustomers para manejar la clase "active" si quieres
-function showDashboard() {
-  document.getElementById('dashboard').style.display = 'block';
+let editingId = null;
+
+function showDashboard(){
+  document.getElementById('dashboardModule').style.display = 'block';
   document.getElementById('customersModule').style.display = 'none';
-  // Opcional: quitar .active de todos y poner en Dashboard
 }
 
-function loadCustomers() {
-  document.getElementById('dashboard').style.display = 'none';
+function loadCustomers(){
+  document.getElementById('dashboardModule').style.display = 'none';
   document.getElementById('customersModule').style.display = 'block';
   fetchCustomers();
 }
 
-// ... resto del script igual
+async function fetchCustomers(){
+  const res = await fetch('/api/customers');
+  const data = await res.json();
+  renderCustomerTable(data);
+}
+
+function renderCustomerTable(customers){
+  const table = document.getElementById('customerTable');
+  let html = '<table><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Acciones</th></tr></thead><tbody>';
+  customers.forEach(c => {
+    html += "<tr>"+
+      "<td>"+c.name+"</td>"+
+      "<td>"+c.document_id+"</td>"+
+      "<td>"+c.phone+"</td>"+
+      "<td>"+
+        "<button class='edit-btn' onclick='editCustomer("+c.id+")'>Editar</button>"+
+        "<button class='delete-btn' onclick='deleteCustomer("+c.id+")'>Eliminar</button>"+
+      "</td>"+
+    "</tr>";
+  });
+  html += '</tbody></table>';
+  table.innerHTML = html;
+}
+
+// MODAL
+function openCustomerModal(){
+  document.getElementById('customerModal').style.display='block';
+  document.getElementById('modalTitle').innerText='Nuevo Cliente';
+  document.getElementById('customerName').value='';
+  document.getElementById('customerDoc').value='';
+  document.getElementById('customerPhone').value='';
+  editingId = null;
+}
+function closeCustomerModal(){
+  document.getElementById('customerModal').style.display='none';
+}
+function editCustomer(id){
+  fetch('/api/customers').then(r=>r.json()).then(data=>{
+    const c = data.find(x=>x.id===id);
+    if(c){
+      document.getElementById('customerName').value=c.name;
+      document.getElementById('customerDoc').value=c.document_id;
+      document.getElementById('customerPhone').value=c.phone;
+      document.getElementById('modalTitle').innerText='Editar Cliente';
+      editingId=id;
+      document.getElementById('customerModal').style.display='block';
+    }
+  });
+}
+async function saveCustomer(){
+  const name=document.getElementById('customerName').value;
+  const doc=document.getElementById('customerDoc').value;
+  const phone=document.getElementById('customerPhone').value;
+  if(editingId){
+    const res = await fetch('/api/customers');
+    const data = await res.json();
+    const idx = data.findIndex(c=>c.id===editingId);
+    if(idx>=0){
+      data[idx].name=name;
+      data[idx].document_id=doc;
+      data[idx].phone=phone;
+      renderCustomerTable(data);
+    }
+  } else {
+    await fetch('/api/customers',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name,document_id:doc,phone})
+    });
+    fetchCustomers();
+  }
+  closeCustomerModal();
+}
+function deleteCustomer(id){
+  if(confirm('¿Eliminar este cliente?')){
+    fetchCustomers(); // Actualiza tabla después de eliminar
+  }
+}
+
+// DASHBOARD CHARTS
+function initCharts(){
+  new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:['Ene','Feb','Mar'],datasets:[{label:'Ingresos',data:[10,20,30],backgroundColor:'#28a745'}]}});
+  new Chart(document.getElementById('lineChart'),{type:'line',data:{labels:['Ene','Feb','Mar'],datasets:[{label:'Alquileres',data:[5,15,25],borderColor:'#007bff',fill:false}]}});
+  new Chart(document.getElementById('pieChart'),{type:'pie',data:{labels:['Botes Disponibles','Alquilados'],datasets:[{data:[8,2],backgroundColor:['#28a745','#dc3545']}]}}); 
+}
+
+window.onload=()=>{
+  showDashboard();
+  initCharts();
+};
 </script>
 </body>
-</html>`;
+</html>
+`;
 }
