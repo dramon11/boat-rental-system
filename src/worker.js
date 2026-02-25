@@ -226,6 +226,179 @@ async function loadDashboard(){
 
 }
 
+
+/* =========================
+   CLIENTES - VERSION PRO
+========================= */
+
+async function loadCustomers() {
+
+  const container = document.getElementById("mainContent");
+
+  container.innerHTML = `
+    <div class="module-header">
+      <div>
+        <h2>Clientes</h2>
+        <p class="subtitle">Gestión y administración de clientes registrados</p>
+      </div>
+      <div class="actions">
+        <input id="searchInput" class="input-search" 
+          placeholder="Buscar por nombre o documento..." />
+        <button class="btn-primary" onclick="openCustomerModal()">
+          + Nuevo Cliente
+        </button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div id="loader" class="loader">Cargando clientes...</div>
+      <div id="customerTable"></div>
+    </div>
+
+    <!-- Modal -->
+    <div id="customerModal" class="modal-overlay">
+      <div class="modal">
+        <h3>Nuevo Cliente</h3>
+        <div class="form-group">
+          <input id="name" placeholder="Nombre completo" />
+          <input id="doc" placeholder="Documento" />
+          <input id="phone" placeholder="Teléfono" />
+          <input id="email" placeholder="Email" />
+        </div>
+        <div class="modal-actions">
+          <button class="btn-success" onclick="saveCustomer()">Guardar</button>
+          <button class="btn-secondary" onclick="closeCustomerModal()">Cancelar</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+  `;
+
+  await fetchCustomers();
+}
+
+async function fetchCustomers() {
+  document.getElementById("loader").style.display = "block";
+
+  const res = await fetch("/api/customers");
+  const data = await res.json();
+
+  document.getElementById("loader").style.display = "none";
+
+  renderCustomerTable(data);
+
+  document.getElementById("searchInput").addEventListener("input", e => {
+    const value = e.target.value.toLowerCase();
+    const filtered = data.filter(c =>
+      c.full_name.toLowerCase().includes(value) ||
+      c.document_id.toLowerCase().includes(value)
+    );
+    renderCustomerTable(filtered);
+  });
+}
+
+function renderCustomerTable(data) {
+
+  if (data.length === 0) {
+    document.getElementById("customerTable").innerHTML = `
+      <div class="empty-state">
+        <p>No hay clientes registrados.</p>
+      </div>
+    `;
+    return;
+  }
+
+  let html = `
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Nombre</th>
+          <th>Documento</th>
+          <th>Teléfono</th>
+          <th>Email</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody>
+  `;
+
+  data.forEach(c => {
+    html += `
+      <tr>
+        <td>${c.full_name}</td>
+        <td>${c.document_id}</td>
+        <td>${c.phone || "-"}</td>
+        <td>${c.email || "-"}</td>
+        <td>
+          <button class="btn-danger-sm"
+            onclick="deleteCustomer(${c.id})">
+            Eliminar
+          </button>
+        </td>
+      </tr>
+    `;
+  });
+
+  html += "</tbody></table>";
+
+  document.getElementById("customerTable").innerHTML = html;
+}
+
+function openCustomerModal() {
+  document.getElementById("customerModal").classList.add("active");
+}
+
+function closeCustomerModal() {
+  document.getElementById("customerModal").classList.remove("active");
+}
+
+async function saveCustomer() {
+
+  const body = {
+    full_name: document.getElementById("name").value,
+    document_id: document.getElementById("doc").value,
+    phone: document.getElementById("phone").value,
+    email: document.getElementById("email").value
+  };
+
+  const res = await fetch("/api/customers", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body)
+  });
+
+  if (res.ok) {
+    showToast("Cliente creado correctamente", "success");
+    closeCustomerModal();
+    fetchCustomers();
+  } else {
+    showToast("Error al crear cliente", "error");
+  }
+}
+
+async function deleteCustomer(id) {
+
+  if (!confirm("¿Seguro que deseas eliminar este cliente?")) return;
+
+  await fetch("/api/customers/" + id, { method: "DELETE" });
+
+  showToast("Cliente eliminado", "success");
+  fetchCustomers();
+}
+
+function showToast(message, type) {
+  const toast = document.getElementById("toast");
+  toast.innerText = message;
+  toast.className = "toast show " + type;
+  setTimeout(() => {
+    toast.className = "toast";
+  }, 3000);
+}
+
+
+
+
 loadDashboard();
 
 </script>
@@ -274,3 +447,4 @@ loadDashboard();
     }
   }
 }
+
