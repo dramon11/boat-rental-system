@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Boat Rental Admin</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="sidebar">
+  <h2>BoatRent</h2>
+  <ul>
+    <li>Dashboard</li>
+    <li>Clientes</li>
+    <li>Botes</li>
+    <li>Alquileres</li>
+  </ul>
+</div>
+
+<div class="main">
+  <header>Boat Rental System</header>
+
+  <div class="cards">
+    <div class="card"><h3>Ingresos Hoy</h3><p id="income">$0</p></div>
+    <div class="card"><h3>Activos</h3><p id="active">0</p></div>
+    <div class="card"><h3>Disponibles</h3><p id="boats">0</p></div>
+    <div class="card"><h3>Clientes</h3><p id="customers">0</p></div>
+  </div>
+</div>
+
+<script>
+async function loadDashboard() {
+  const res = await fetch('/api/dashboard');
+  const data = await res.json();
+  document.getElementById('income').innerText = '$' + data.income_today;
+  document.getElementById('active').innerText = data.active_rentals;
+  document.getElementById('boats').innerText = data.available_boats;
+  document.getElementById('customers').innerText = data.total_customers;
+}
+loadDashboard();
+</script>
+
+</body>
+</html>
