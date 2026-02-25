@@ -1,203 +1,169 @@
-addEventListener("fetch", (event) => {
-  event.respondWith(handleRequest(event.request));
-});
+// worker.js - Formato ES Module para Cloudflare Worker + D1
 
-async function handleRequest(request) {
-  const url = new URL(request.url);
+export default {
+  async fetch(request, env) {
+    const url = new URL(request.url);
 
-  if (url.pathname === "/" || url.pathname === "/index") {
-    return new Response(getHTML(), { headers: { "Content-Type": "text/html;charset=UTF-8" } });
-  }
-
-  if (url.pathname.startsWith("/api/customers")) {
-    if (request.method === "GET") {
-      // Reemplaza con tu fuente de datos real
-      return new Response(JSON.stringify([]), { headers: { "Content-Type": "application/json" } });
+    // -----------------------
+    // Dashboard y Frontend
+    // -----------------------
+    if (url.pathname === "/" || url.pathname === "/index") {
+      return new Response(getHTML(), {
+        headers: { "Content-Type": "text/html;charset=UTF-8" },
+      });
     }
-    if (request.method === "POST") {
-      const data = await request.json();
-      // Aquí agregarías a tu DB real
-      return new Response(JSON.stringify({ success: true }));
+
+    // -----------------------
+    // API Clientes
+    // -----------------------
+    if (url.pathname.startsWith("/api/customers")) {
+      if (request.method === "GET") {
+        const res = await env.DB.prepare("SELECT * FROM customers").all();
+        return new Response(JSON.stringify(res.results), {
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      if (request.method === "POST") {
+        const data = await request.json();
+        await env.DB.prepare(
+          "INSERT INTO customers (name, document_id, phone) VALUES (?, ?, ?)"
+        )
+          .bind(data.name, data.document_id, data.phone)
+          .run();
+        return new Response(JSON.stringify({ success: true }));
+      }
+
+      if (request.method === "PUT") {
+        const data = await request.json();
+        await env.DB.prepare(
+          "UPDATE customers SET name = ?, document_id = ?, phone = ? WHERE id = ?"
+        )
+          .bind(data.name, data.document_id, data.phone, data.id)
+          .run();
+        return new Response(JSON.stringify({ success: true }));
+      }
+
+      if (request.method === "DELETE") {
+        const data = await request.json();
+        await env.DB.prepare("DELETE FROM customers WHERE id = ?")
+          .bind(data.id)
+          .run();
+        return new Response(JSON.stringify({ success: true }));
+      }
     }
-  }
 
-  return new Response("Not found", { status: 404 });
-}
+    return new Response("Not found", { status: 404 });
+  },
+};
 
+// -----------------------
+// HTML + JS del Frontend
+// -----------------------
 function getHTML() {
   return `
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<title>ERP de Alquiler de Botes</title>
+<title>ERP Sistema de Clientes y Dashboard</title>
 <style>
-body{font-family:sans-serif;margin:0;padding:0;background:#f4f4f4;}
-.cards{display:flex;gap:10px;margin:10px;}
-.card{background:#fff;padding:20px;flex:1;border-radius:8px;box-shadow:0 0 5px #ccc;}
-.charts{display:flex;gap:10px;margin:10px;flex-wrap:wrap;}
-.chart-box{background:#fff;padding:10px;border-radius:8px;flex:1;min-width:300px;}
-.full-width{flex:1 1 100%;}
-.btn-success{padding:5px 10px;background:#28a745;color:#fff;border:none;border-radius:5px;cursor:pointer;}
-.input-search{padding:5px;border-radius:5px;border:1px solid #ccc;margin-right:5px;}
-table{width:100%;border-collapse:collapse;}
-th,td{padding:8px;text-align:left;border-bottom:1px solid #ccc;}
-th{background:#eee;}
-button.edit-btn{margin-right:5px;background:#007bff;color:#fff;padding:3px 8px;border:none;border-radius:4px;cursor:pointer;}
-button.delete-btn{background:#dc3545;color:#fff;padding:3px 8px;border:none;border-radius:4px;cursor:pointer;}
+body { font-family: Arial, sans-serif; margin: 20px; background:#f5f5f5; }
+h1 { text-align:center; }
+.cards { display:flex; gap:20px; margin-bottom:20px; }
+.card { background:white; padding:15px; border-radius:10px; box-shadow:0 2px 6px rgba(0,0,0,0.2); flex:1; text-align:center; }
+table { width:100%; border-collapse:collapse; background:white; border-radius:10px; overflow:hidden; }
+th, td { padding:10px; border-bottom:1px solid #ddd; text-align:left; }
+th { background:#007bff; color:white; }
+button { padding:5px 10px; border:none; border-radius:5px; cursor:pointer; }
+button.edit { background:#28a745; color:white; }
+button.delete { background:#dc3545; color:white; }
 </style>
 </head>
 <body>
 
-<div id="mainContent">
-
-  <!-- DASHBOARD -->
-  <div id="dashboardModule">
-    <div class="cards">
-      <div class="card"><h4>Ingresos Hoy</h4><h2 id="income">$0</h2></div>
-      <div class="card"><h4>Alquileres Activos</h4><h2 id="active">0</h2></div>
-      <div class="card"><h4>Botes Disponibles</h4><h2 id="boats">0</h2></div>
-      <div class="card"><h4>Total Clientes</h4><h2 id="customers">0</h2></div>
-    </div>
-    <div class="charts">
-      <div class="chart-box"><h4>Resumen General (Barras)</h4><canvas id="barChart"></canvas></div>
-      <div class="chart-box"><h4>Tendencia (Línea)</h4><canvas id="lineChart"></canvas></div>
-      <div class="chart-box full-width"><h4>Distribución (Pie)</h4><canvas id="pieChart"></canvas></div>
-    </div>
-  </div>
-
-  <!-- CLIENTES -->
-  <div id="customersModule" style="display:none;">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-      <h2>Clientes</h2>
-      <div>
-        <input id="searchInput" class="input-search" placeholder="Buscar..." />
-        <button class="btn-success" onclick="openCustomerModal()">+ Nuevo Cliente</button>
-      </div>
-    </div>
-    <div class="card">
-      <div id="customerTable">Cargando clientes...</div>
-    </div>
-  </div>
-
+<h1>Dashboard</h1>
+<div class="cards">
+  <div class="card"><canvas id="pieChart"></canvas></div>
+  <div class="card"><canvas id="barChart"></canvas></div>
+  <div class="card"><canvas id="lineChart"></canvas></div>
 </div>
 
-<!-- MODAL -->
-<div id="customerModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
-background:#fff;padding:20px;border-radius:10px;box-shadow:0 0 10px #000;">
-  <h3 id="modalTitle">Nuevo Cliente</h3>
-  <input id="customerName" placeholder="Nombre" /><br/><br/>
-  <input id="customerDoc" placeholder="Documento" /><br/><br/>
-  <input id="customerPhone" placeholder="Teléfono" /><br/><br/>
-  <button onclick="saveCustomer()">Guardar</button>
-  <button onclick="closeCustomerModal()">Cerrar</button>
+<h1>Clientes</h1>
+<div>
+  <table id="customersTable">
+    <thead>
+      <tr>
+        <th>ID</th><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Acciones</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-let editingId = null;
-
-function showDashboard(){
-  document.getElementById('dashboardModule').style.display = 'block';
-  document.getElementById('customersModule').style.display = 'none';
+async function fetchCustomers() {
+  const res = await fetch('/api/customers');
+  const data = await res.json();
+  const tbody = document.querySelector("#customersTable tbody");
+  tbody.innerHTML = "";
+  data.forEach(c => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = \`
+      <td>\${c.id}</td>
+      <td>\${c.name}</td>
+      <td>\${c.document_id}</td>
+      <td>\${c.phone}</td>
+      <td>
+        <button class="edit" onclick='editCustomer(\${JSON.stringify(c)})'>Editar</button>
+        <button class="delete" onclick='deleteCustomer(\${c.id})'>Eliminar</button>
+      </td>
+    \`;
+    tbody.appendChild(tr);
+  });
 }
 
-function loadCustomers(){
-  document.getElementById('dashboardModule').style.display = 'none';
-  document.getElementById('customersModule').style.display = 'block';
+async function deleteCustomer(id) {
+  if(!confirm("¿Seguro que deseas eliminar este cliente?")) return;
+  await fetch('/api/customers', { method:"DELETE", body:JSON.stringify({id}), headers:{'Content-Type':'application/json'} });
   fetchCustomers();
 }
 
-async function fetchCustomers(){
-  const res = await fetch('/api/customers');
-  const data = await res.json();
-  renderCustomerTable(data);
-}
-
-function renderCustomerTable(customers){
-  const table = document.getElementById('customerTable');
-  let html = '<table><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Acciones</th></tr></thead><tbody>';
-  customers.forEach(c => {
-    html += "<tr>"+
-      "<td>"+c.name+"</td>"+
-      "<td>"+c.document_id+"</td>"+
-      "<td>"+c.phone+"</td>"+
-      "<td>"+
-        "<button class='edit-btn' onclick='editCustomer("+c.id+")'>Editar</button>"+
-        "<button class='delete-btn' onclick='deleteCustomer("+c.id+")'>Eliminar</button>"+
-      "</td>"+
-    "</tr>";
-  });
-  html += '</tbody></table>';
-  table.innerHTML = html;
-}
-
-// MODAL
-function openCustomerModal(){
-  document.getElementById('customerModal').style.display='block';
-  document.getElementById('modalTitle').innerText='Nuevo Cliente';
-  document.getElementById('customerName').value='';
-  document.getElementById('customerDoc').value='';
-  document.getElementById('customerPhone').value='';
-  editingId = null;
-}
-function closeCustomerModal(){
-  document.getElementById('customerModal').style.display='none';
-}
-function editCustomer(id){
-  fetch('/api/customers').then(r=>r.json()).then(data=>{
-    const c = data.find(x=>x.id===id);
-    if(c){
-      document.getElementById('customerName').value=c.name;
-      document.getElementById('customerDoc').value=c.document_id;
-      document.getElementById('customerPhone').value=c.phone;
-      document.getElementById('modalTitle').innerText='Editar Cliente';
-      editingId=id;
-      document.getElementById('customerModal').style.display='block';
-    }
-  });
-}
-async function saveCustomer(){
-  const name=document.getElementById('customerName').value;
-  const doc=document.getElementById('customerDoc').value;
-  const phone=document.getElementById('customerPhone').value;
-  if(editingId){
-    const res = await fetch('/api/customers');
-    const data = await res.json();
-    const idx = data.findIndex(c=>c.id===editingId);
-    if(idx>=0){
-      data[idx].name=name;
-      data[idx].document_id=doc;
-      data[idx].phone=phone;
-      renderCustomerTable(data);
-    }
-  } else {
-    await fetch('/api/customers',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({name,document_id:doc,phone})
-    });
-    fetchCustomers();
-  }
-  closeCustomerModal();
-}
-function deleteCustomer(id){
-  if(confirm('¿Eliminar este cliente?')){
-    fetchCustomers(); // Actualiza tabla después de eliminar
+function editCustomer(c) {
+  const name = prompt("Nombre:", c.name);
+  const doc = prompt("Documento:", c.document_id);
+  const phone = prompt("Teléfono:", c.phone);
+  if(name && doc && phone) {
+    fetch('/api/customers', { method:"PUT", body:JSON.stringify({id:c.id,name,document_id:doc,phone}), headers:{'Content-Type':'application/json'} })
+      .then(()=>fetchCustomers());
   }
 }
 
-// DASHBOARD CHARTS
-function initCharts(){
-  new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:['Ene','Feb','Mar'],datasets:[{label:'Ingresos',data:[10,20,30],backgroundColor:'#28a745'}]}});
-  new Chart(document.getElementById('lineChart'),{type:'line',data:{labels:['Ene','Feb','Mar'],datasets:[{label:'Alquileres',data:[5,15,25],borderColor:'#007bff',fill:false}]}});
-  new Chart(document.getElementById('pieChart'),{type:'pie',data:{labels:['Botes Disponibles','Alquilados'],datasets:[{data:[8,2],backgroundColor:['#28a745','#dc3545']}]}}); 
-}
+// Inicializar tabla
+fetchCustomers();
 
-window.onload=()=>{
-  showDashboard();
-  initCharts();
-};
+// -------------------------
+// Gráficos (Dashboard)
+// -------------------------
+const pieCtx = document.getElementById('pieChart').getContext('2d');
+const barCtx = document.getElementById('barChart').getContext('2d');
+const lineCtx = document.getElementById('lineChart').getContext('2d');
+
+const pieChart = new Chart(pieCtx, {
+  type: 'pie',
+  data: { labels: ['Clientes', 'Botes', 'Reservas'], datasets:[{ data:[10,20,30], backgroundColor:['#007bff','#28a745','#dc3545'] }] },
+});
+
+const barChart = new Chart(barCtx, {
+  type:'bar',
+  data:{ labels:['Enero','Febrero','Marzo'], datasets:[{ label:'Reservas', data:[5,10,15], backgroundColor:'#007bff' }] },
+});
+
+const lineChart = new Chart(lineCtx,{
+  type:'line',
+  data:{ labels:['Semana 1','Semana 2','Semana 3'], datasets:[{ label:'Ingresos', data:[100,200,150], borderColor:'#28a745', fill:false }] },
+});
 </script>
 </body>
 </html>
