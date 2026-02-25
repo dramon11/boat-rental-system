@@ -43,6 +43,7 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
 .btn{padding:6px 12px;border:none;border-radius:4px;cursor:pointer;}
 .btn-danger{background:#ef4444;color:white;}
 .btn-success{background:#22c55e;color:white;}
+.btn-edit{background:#f59e0b;color:white;}
 .input-search{padding:6px 12px;border:1px solid #ccc;border-radius:4px;}
 .modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;}
 .modal-overlay.active{display:flex;}
@@ -108,13 +109,13 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
 <!-- MODAL CLIENTES -->
 <div id="customerModal" class="modal-overlay">
   <div class="modal">
-    <h3>Nuevo Cliente</h3>
+    <h3 id="modalTitle">Nuevo Cliente</h3>
     <input id="name" placeholder="Nombre completo" style="width:100%;margin-bottom:8px"/>
     <input id="doc" placeholder="Documento" style="width:100%;margin-bottom:8px"/>
     <input id="phone" placeholder="Teléfono" style="width:100%;margin-bottom:8px"/>
     <input id="email" placeholder="Email" style="width:100%;margin-bottom:8px"/>
     <div style="text-align:right;margin-top:10px;">
-      <button class="btn-success" onclick="saveCustomer()">Guardar</button>
+      <button class="btn-success" id="saveBtn" onclick="saveCustomer()">Guardar</button>
       <button class="btn" onclick="closeCustomerModal()">Cancelar</button>
     </div>
   </div>
@@ -123,6 +124,8 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
 <div id="toast" class="toast"></div>
 
 <script>
+let editCustomerId = null;
+
 async function loadDashboard(){
   const res = await fetch("/api/dashboard");
   const data = await res.json();
@@ -187,14 +190,36 @@ function renderCustomerTable(data){
     html += '<td>'+c.document_id+'</td>';
     html += '<td>'+(c.phone||'-')+'</td>';
     html += '<td>'+(c.email||'-')+'</td>';
-    html += '<td><button class="btn btn-danger" onclick="deleteCustomer('+c.id+')">Eliminar</button></td>';
+    html += '<td>';
+    html += '<button class="btn-edit" onclick="editCustomer('+c.id+',\''+c.full_name+'\',\''+c.document_id+'\',\''+(c.phone||'')+'\',\''+(c.email||'')+'\')">Editar</button> ';
+    html += '<button class="btn btn-danger" onclick="deleteCustomer('+c.id+')">Eliminar</button>';
+    html += '</td>';
     html += '</tr>';
   }
   html += '</tbody></table>';
   tableEl.innerHTML = html;
 }
 
-function openCustomerModal(){document.getElementById("customerModal").classList.add("active");}
+function editCustomer(id,name,doc,phone,email){
+  editCustomerId = id;
+  document.getElementById("modalTitle").innerText = "Editar Cliente";
+  document.getElementById("name").value = name;
+  document.getElementById("doc").value = doc;
+  document.getElementById("phone").value = phone;
+  document.getElementById("email").value = email;
+  document.getElementById("customerModal").classList.add("active");
+}
+
+function openCustomerModal(){
+  editCustomerId = null;
+  document.getElementById("modalTitle").innerText = "Nuevo Cliente";
+  document.getElementById("name").value="";
+  document.getElementById("doc").value="";
+  document.getElementById("phone").value="";
+  document.getElementById("email").value="";
+  document.getElementById("customerModal").classList.add("active");
+}
+
 function closeCustomerModal(){document.getElementById("customerModal").classList.remove("active");}
 
 async function saveCustomer(){
@@ -204,9 +229,24 @@ async function saveCustomer(){
     phone: document.getElementById("phone").value,
     email: document.getElementById("email").value
   };
-  const res = await fetch('/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(res.ok){showToast("Cliente creado correctamente","success");closeCustomerModal();fetchCustomers();}
-  else showToast("Error al crear cliente","error");
+
+  if(editCustomerId){
+    await fetch('/api/customers/'+editCustomerId,{
+      method:'PUT',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    showToast("Cliente actualizado","success");
+  }else{
+    await fetch('/api/customers',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(body)
+    });
+    showToast("Cliente creado correctamente","success");
+  }
+  closeCustomerModal();
+  fetchCustomers();
 }
 
 async function deleteCustomer(id){
@@ -262,6 +302,14 @@ loadDashboard();
           const body = await request.json();
           await env.DB.prepare("INSERT INTO customers (full_name, document_id, phone, email) VALUES (?,?,?,?)")
             .bind(body.full_name, body.document_id, body.phone, body.email).run();
+          return json({ok:true});
+        }
+        if(request.method==="PUT"){
+          const parts = url.pathname.split("/");
+          const id = parts[parts.length-1];
+          const body = await request.json();
+          await env.DB.prepare("UPDATE customers SET full_name=?, document_id=?, phone=?, email=? WHERE id=?")
+            .bind(body.full_name, body.document_id, body.phone, body.email, id).run();
           return json({ok:true});
         }
         if(request.method==="DELETE"){
