@@ -9,11 +9,12 @@ export default {
       });
 
     try {
+
       /* =============================
          FRONTEND ERP
       ============================== */
       if (url.pathname === "/" && request.method === "GET") {
-        return new Response(`<!DOCTYPE html>
+        const html = `<!DOCTYPE html>
 <html>
 <head>
 <meta charset="UTF-8" />
@@ -108,13 +109,11 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
 <div id="customerModal" class="modal-overlay">
   <div class="modal">
     <h3>Nuevo Cliente</h3>
-    <div class="form-group">
-      <input id="name" placeholder="Nombre completo" />
-      <input id="doc" placeholder="Documento" />
-      <input id="phone" placeholder="Teléfono" />
-      <input id="email" placeholder="Email" />
-    </div>
-    <div class="modal-actions">
+    <input id="name" placeholder="Nombre completo" style="width:100%;margin-bottom:8px"/>
+    <input id="doc" placeholder="Documento" style="width:100%;margin-bottom:8px"/>
+    <input id="phone" placeholder="Teléfono" style="width:100%;margin-bottom:8px"/>
+    <input id="email" placeholder="Email" style="width:100%;margin-bottom:8px"/>
+    <div style="text-align:right;margin-top:10px;">
       <button class="btn-success" onclick="saveCustomer()">Guardar</button>
       <button class="btn" onclick="closeCustomerModal()">Cancelar</button>
     </div>
@@ -125,10 +124,10 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
 
 <script>
 async function loadDashboard(){
-  document.getElementById('mainContent').innerHTML = document.getElementById('dashboard').outerHTML;
   const res = await fetch("/api/dashboard");
   const data = await res.json();
 
+  document.getElementById("mainContent").innerHTML = document.getElementById('dashboard').outerHTML;
   document.getElementById("income").innerText = "$" + data.income_today;
   document.getElementById("active").innerText = data.active_rentals;
   document.getElementById("boats").innerText = data.available_boats;
@@ -143,16 +142,14 @@ async function loadDashboard(){
   new Chart(document.getElementById("pieChart"),{type:"pie",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}});
 
 }
-
 function showDashboard(){loadDashboard();}
 
 /* =========================
    CLIENTES
 ========================= */
-
 async function loadCustomers(){
   const container = document.getElementById('mainContent');
-  container.innerHTML = `
+  container.innerHTML = \`
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <h2>Clientes</h2>
       <div>
@@ -163,7 +160,7 @@ async function loadCustomers(){
     <div class="card">
       <div id="customerTable">Cargando clientes...</div>
     </div>
-  `;
+  \`;
   await fetchCustomers();
 }
 
@@ -181,12 +178,8 @@ async function fetchCustomers(){
 
 function renderCustomerTable(data){
   const tableEl = document.getElementById("customerTable");
-  if(!data || data.length===0){
-    tableEl.innerHTML="<p>No hay clientes.</p>";
-    return;
-  }
-  let html = '<table class="data-table">';
-  html += '<thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Acciones</th></tr></thead><tbody>';
+  if(!data || data.length===0){tableEl.innerHTML="<p>No hay clientes.</p>"; return;}
+  let html = '<table class="data-table"><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Acciones</th></tr></thead><tbody>';
   for(let i=0;i<data.length;i++){
     const c = data[i];
     html += '<tr>';
@@ -235,8 +228,9 @@ loadDashboard();
 
 </script>
 </body>
-</html>
-`,{headers:{"Content-Type":"text/html"}});
+</html>`;
+
+        return new Response(html, { headers: { "Content-Type": "text/html" } });
       }
 
       /* =============================
@@ -266,7 +260,7 @@ loadDashboard();
         }
         if(request.method==="POST"){
           const body = await request.json();
-          const result = await env.DB.prepare("INSERT INTO customers (full_name, document_id, phone, email) VALUES (?,?,?,?)")
+          await env.DB.prepare("INSERT INTO customers (full_name, document_id, phone, email) VALUES (?,?,?,?)")
             .bind(body.full_name, body.document_id, body.phone, body.email).run();
           return json({ok:true});
         }
