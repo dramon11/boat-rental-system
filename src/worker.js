@@ -1,14 +1,17 @@
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
     const json = (data, status = 200) => new Response(JSON.stringify(data), {
       status,
       headers: { "Content-Type": "application/json" },
     });
+
     try {
       /* ============================= FRONTEND ERP ============================== */
       if (url.pathname === "/" && request.method === "GET") {
-        const html = `<!DOCTYPE html>
+        const html = `
+<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8" />
@@ -92,6 +95,7 @@ export default {
       </div>
     </div>
   </div>
+
   <!-- MODAL CLIENTES -->
   <div id="customerModal" class="modal-overlay">
     <div class="modal">
@@ -106,10 +110,11 @@ export default {
       </div>
     </div>
   </div>
+
   <div id="toast" class="toast"></div>
+
   <script>
-    let editingId = null;
-    let customersData = [];
+    let editingCustomerId = null;
 
     async function loadDashboard(){
       const res = await fetch("/api/dashboard");
@@ -124,6 +129,7 @@ export default {
       new Chart(document.getElementById("lineChart"),{type:"line",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values,tension:0.4}]}});
       new Chart(document.getElementById("pieChart"),{type:"pie",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}});
     }
+
     function showDashboard(){loadDashboard();}
 
     /* ========================= CLIENTES ========================= */
@@ -143,10 +149,10 @@ export default {
       \`;
       await fetchCustomers();
     }
+
     async function fetchCustomers(){
       const res = await fetch('/api/customers');
       const data = await res.json();
-      customersData = data;
       renderCustomerTable(data);
       document.getElementById("searchInput").addEventListener("input", e=>{
         const val = e.target.value.toLowerCase();
@@ -154,28 +160,157 @@ export default {
         renderCustomerTable(filtered);
       });
     }
+
     function renderCustomerTable(data){
       const tableEl = document.getElementById("customerTable");
       if(!data || data.length===0){tableEl.innerHTML="<p>No hay clientes.</p>"; return;}
       let html = '<table class="data-table"><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Acciones</th></tr></thead><tbody>';
       for(let i=0;i<data.length;i++){
         const c = data[i];
-        html += '<tr>';
+        html += '<tr data-id="' + c.id + '">';
         html += '<td>'+c.full_name+'</td>';
         html += '<td>'+c.document_id+'</td>';
         html += '<td>'+(c.phone||'-')+'</td>';
         html += '<td>'+(c.email||'-')+'</td>';
-        html += '<td><button class="btn" style="background:#3b82f6;color:white;margin-right:5px;" onclick="editCustomer('+c.id+')">Editar</button><button class="btn btn-danger" onclick="deleteCustomer('+c.id+')">Eliminar</button></td>';
+        html += '<td><button class="btn btn-success" onclick="editCustomer(this)">Editar</button> <button class="btn btn-danger" onclick="deleteCustomer('+c.id+')">Eliminar</button></td>';
         html += '</tr>';
       }
       html += '</tbody></table>';
       tableEl.innerHTML = html;
     }
-    function openCustomerModal(customer = null){
-      editingId = customer ? customer.id : null;
-      document.getElementById("modalTitle").innerText = customer ? "Editar Cliente" : "Nuevo Cliente";
-      document.getElementById("name").value = customer ? customer.full_name : "";
-      document.getElementById("doc").value = customer ? customer.document_id : "";
-      document.getElementById("phone").value = customer ? (customer.phone || "") : "";
-      document.getElementById("email").value = customer ? (customer.email || "") : "";
-      document.getElementById("customerModal").classL
+
+    function openCustomerModal(){
+      editingCustomerId = null;
+      document.getElementById("modalTitle").textContent = "Nuevo Cliente";
+      document.getElementById("name").value = "";
+      document.getElementById("doc").value = "";
+      document.getElementById("phone").value = "";
+      document.getElementById("email").value = "";
+      document.getElementById("customerModal").classList.add("active");
+    }
+
+    function editCustomer(btn){
+      const row = btn.closest('tr');
+      const id = row.dataset.id;
+      const name = row.cells[0].textContent;
+      const doc = row.cells[1].textContent;
+      const phone = row.cells[2].textContent === '-' ? '' : row.cells[2].textContent;
+      const email = row.cells[3].textContent === '-' ? '' : row.cells[3].textContent;
+
+      editingCustomerId = parseInt(id);
+      document.getElementById("modalTitle").textContent = "Editar Cliente";
+      document.getElementById("name").value = name;
+      document.getElementById("doc").value = doc;
+      document.getElementById("phone").value = phone;
+      document.getElementById("email").value = email;
+      document.getElementById("customerModal").classList.add("active");
+    }
+
+    function closeCustomerModal(){
+      document.getElementById("customerModal").classList.remove("active");
+    }
+
+    async function saveCustomer(){
+      const body = {
+        full_name: document.getElementById("name").value,
+        document_id: document.getElementById("doc").value,
+        phone: document.getElementById("phone").value,
+        email: document.getElementById("email").value
+      };
+
+      let url = '/api/customers';
+      let method = 'POST';
+      let message = "Cliente creado correctamente";
+
+      if (editingCustomerId !== null) {
+        url += '/' + editingCustomerId;
+        method = 'PUT';
+        message = "Cliente actualizado correctamente";
+      }
+
+      const res = await fetch(url, {
+        method: method,
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify(body)
+      });
+
+      if(res.ok){
+        showToast(message, "success");
+        closeCustomerModal();
+        fetchCustomers();
+      } else {
+        showToast("Error al guardar cliente", "error");
+      }
+    }
+
+    async function deleteCustomer(id){
+      if(!confirm("¿Seguro que deseas eliminar este cliente?")) return;
+      await fetch('/api/customers/'+id, {method:'DELETE'});
+      showToast("Cliente eliminado", "success");
+      fetchCustomers();
+    }
+
+    function showToast(msg, type){
+      const toast = document.getElementById("toast");
+      toast.innerText = msg;
+      toast.className = "toast show " + type;
+      setTimeout(()=>{toast.className="toast";},3000);
+    }
+
+    /* CARGAMOS DASHBOARD AL INICIO */
+    loadDashboard();
+  </script>
+</body>
+</html>
+        `;
+        return new Response(html, { headers: { "Content-Type": "text/html" } });
+      }
+
+      /* ============================= API DASHBOARD ============================== */
+      if(url.pathname==="/api/dashboard"){
+        const income = await env.DB.prepare("SELECT IFNULL(SUM(total_amount),0) as total FROM rentals WHERE DATE(created_at)=DATE('now')").first();
+        const active = await env.DB.prepare("SELECT COUNT(*) as total FROM rentals WHERE status='active'").first();
+        const boats = await env.DB.prepare("SELECT COUNT(*) as total FROM boats WHERE status='available'").first();
+        const customers = await env.DB.prepare("SELECT COUNT(*) as total FROM customers").first();
+        return json({
+          income_today: income.total,
+          active_rentals: active.total,
+          available_boats: boats.total,
+          total_customers: customers.total
+        });
+      }
+
+      /* ============================= API CLIENTES ============================== */
+      if(url.pathname.startsWith("/api/customers")){
+        if(request.method==="GET"){
+          const rows = await env.DB.prepare("SELECT id, full_name, document_id, phone, email FROM customers").all();
+          return json(rows.results || []);
+        }
+        if(request.method==="POST"){
+          const body = await request.json();
+          await env.DB.prepare("INSERT INTO customers (full_name, document_id, phone, email) VALUES (?,?,?,?)")
+            .bind(body.full_name, body.document_id, body.phone, body.email).run();
+          return json({ok:true});
+        }
+        if(request.method==="PUT"){
+          const parts = url.pathname.split("/");
+          const id = parts[parts.length-1];
+          const body = await request.json();
+          await env.DB.prepare("UPDATE customers SET full_name=?, document_id=?, phone=?, email=? WHERE id=?")
+            .bind(body.full_name, body.document_id, body.phone, body.email, id).run();
+          return json({ok:true});
+        }
+        if(request.method==="DELETE"){
+          const parts = url.pathname.split("/");
+          const id = parts[parts.length-1];
+          await env.DB.prepare("DELETE FROM customers WHERE id=?").bind(id).run();
+          return json({ok:true});
+        }
+      }
+
+      return json({error:"Not Found"},404);
+    } catch(err){
+      return json({error:err.message},500);
+    }
+  }
+}
