@@ -53,52 +53,52 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
 </head>
 <body>
 
-<div class="sidebar">
+<div class='sidebar'>
   <h2>⚓ BoatERP</h2>
-  <div class="menu-item active" onclick="showDashboard()">Dashboard</div>
-  <div class="menu-item" onclick="loadCustomers()">Clientes</div>
+  <div class='menu-item active' onclick='showDashboard()'>Dashboard</div>
+  <div class='menu-item' onclick='loadCustomers()'>Clientes</div>
 </div>
 
-<div class="header">
+<div class='header'>
   <div>Panel Administrativo</div>
   <div>Admin</div>
 </div>
 
-<div class="content" id="mainContent">
+<div class='content' id='mainContent'>
 
   <!-- DASHBOARD -->
-  <div id="dashboard">
-    <div class="cards">
-      <div class="card">
+  <div id='dashboard'>
+    <div class='cards'>
+      <div class='card'>
         <h4>Ingresos Hoy</h4>
-        <h2 id="income">$0</h2>
+        <h2 id='income'>$0</h2>
       </div>
-      <div class="card">
+      <div class='card'>
         <h4>Alquileres Activos</h4>
-        <h2 id="active">0</h2>
+        <h2 id='active'>0</h2>
       </div>
-      <div class="card">
+      <div class='card'>
         <h4>Botes Disponibles</h4>
-        <h2 id="boats">0</h2>
+        <h2 id='boats'>0</h2>
       </div>
-      <div class="card">
+      <div class='card'>
         <h4>Total Clientes</h4>
-        <h2 id="customers">0</h2>
+        <h2 id='customers'>0</h2>
       </div>
     </div>
 
-    <div class="charts">
-      <div class="chart-box">
+    <div class='charts'>
+      <div class='chart-box'>
         <h4>Resumen General (Barras)</h4>
-        <canvas id="barChart"></canvas>
+        <canvas id='barChart'></canvas>
       </div>
-      <div class="chart-box">
+      <div class='chart-box'>
         <h4>Tendencia (Línea)</h4>
-        <canvas id="lineChart"></canvas>
+        <canvas id='lineChart'></canvas>
       </div>
-      <div class="chart-box full-width">
+      <div class='chart-box full-width'>
         <h4>Distribución (Pie)</h4>
-        <canvas id="pieChart"></canvas>
+        <canvas id='pieChart'></canvas>
       </div>
     </div>
   </div>
@@ -106,51 +106,41 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
 </div>
 
 <!-- MODAL CLIENTES -->
-<div id="customerModal" class="modal-overlay">
-  <div class="modal">
-    <h3 id="modalTitle">Nuevo Cliente</h3>
-    <input id="name" placeholder="Nombre completo" style="width:100%;margin-bottom:8px"/>
-    <input id="doc" placeholder="Documento" style="width:100%;margin-bottom:8px"/>
-    <input id="phone" placeholder="Teléfono" style="width:100%;margin-bottom:8px"/>
-    <input id="email" placeholder="Email" style="width:100%;margin-bottom:8px"/>
-    <div style="text-align:right;margin-top:10px;">
-      <button class="btn-success" onclick="saveCustomer()">Guardar</button>
-      <button class="btn" onclick="closeCustomerModal()">Cancelar</button>
+<div id='customerModal' class='modal-overlay'>
+  <div class='modal'>
+    <h3 id='modalTitle'>Nuevo Cliente</h3>
+    <input id='name' placeholder='Nombre completo' style='width:100%;margin-bottom:8px'/>
+    <input id='doc' placeholder='Documento' style='width:100%;margin-bottom:8px'/>
+    <input id='phone' placeholder='Teléfono' style='width:100%;margin-bottom:8px'/>
+    <input id='email' placeholder='Email' style='width:100%;margin-bottom:8px'/>
+    <div style='text-align:right;margin-top:10px;'>
+      <button class='btn-success' onclick='saveCustomer()'>Guardar</button>
+      <button class='btn' onclick='closeCustomerModal()'>Cancelar</button>
     </div>
   </div>
 </div>
 
-<div id="toast" class="toast"></div>
+<div id='toast' class='toast'></div>
 
 <script>
 let editingCustomerId = null;
 
 // ==================== DASHBOARD ====================
 function showDashboard() {
-  fetch("/api/dashboard").then(res=>res.json()).then(data=>{
-    document.getElementById("mainContent").innerHTML = document.getElementById('dashboard').outerHTML;
+  fetch('/api/dashboard').then(res=>res.json()).then(data=>{
+    document.getElementById('mainContent').innerHTML = document.getElementById('dashboard').outerHTML;
 
-    document.getElementById("income").innerText = "$" + data.income_today;
-    document.getElementById("active").innerText = data.active_rentals;
-    document.getElementById("boats").innerText = data.available_boats;
-    document.getElementById("customers").innerText = data.total_customers;
+    document.getElementById('income').innerText = '$' + data.income_today;
+    document.getElementById('active').innerText = data.active_rentals;
+    document.getElementById('boats').innerText = data.available_boats;
+    document.getElementById('customers').innerText = data.total_customers;
 
     const values = [data.income_today,data.active_rentals,data.available_boats,data.total_customers];
 
-    new Chart(document.getElementById("barChart"),{
-      type:"bar",
-      data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}
-    });
+    new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:['Ingresos','Activos','Disponibles','Clientes'],datasets:[{data:values}]}});
+    new Chart(document.getElementById('lineChart'),{type:'line',data:{labels:['Ingresos','Activos','Disponibles','Clientes'],datasets:[{data:values,tension:0.4}]}});
+    new Chart(document.getElementById('pieChart'),{type:'pie',data:{labels:['Ingresos','Activos','Disponibles','Clientes'],datasets:[{data:values}]}});
 
-    new Chart(document.getElementById("lineChart"),{
-      type:"line",
-      data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values,tension:0.4}]}
-    });
-
-    new Chart(document.getElementById("pieChart"),{
-      type:"pie",
-      data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}
-    });
   });
 }
 
@@ -158,15 +148,15 @@ function showDashboard() {
 async function loadCustomers(){
   const container = document.getElementById('mainContent');
   container.innerHTML = `
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;'>
       <h2>Clientes</h2>
       <div>
-        <input id="searchInput" class="input-search" placeholder="Buscar por nombre o documento..." />
-        <button class="btn-success" onclick="openCustomerModal()">+ Nuevo Cliente</button>
+        <input id='searchInput' class='input-search' placeholder='Buscar por nombre o documento...' />
+        <button class='btn-success' onclick='openCustomerModal()'>+ Nuevo Cliente</button>
       </div>
     </div>
-    <div class="card">
-      <div id="customerTable">Cargando clientes...</div>
+    <div class='card'>
+      <div id='customerTable'>Cargando clientes...</div>
     </div>
   `;
   await fetchCustomers();
@@ -177,8 +167,8 @@ async function fetchCustomers(){
   const data = await res.json();
   renderCustomerTable(data);
 
-  const searchInput = document.getElementById("searchInput");
-  searchInput.addEventListener("input", e=>{
+  const searchInput = document.getElementById('searchInput');
+  searchInput.addEventListener('input', e=>{
     const val = e.target.value.toLowerCase();
     const filtered = data.filter(c=>c.full_name.toLowerCase().includes(val) || c.document_id.toLowerCase().includes(val));
     renderCustomerTable(filtered);
@@ -186,8 +176,8 @@ async function fetchCustomers(){
 }
 
 function renderCustomerTable(data){
-  const tableEl = document.getElementById("customerTable");
-  if(!data || data.length===0){tableEl.innerHTML="<p>No hay clientes.</p>"; return;}
+  const tableEl = document.getElementById('customerTable');
+  if(!data || data.length===0){tableEl.innerHTML='<p>No hay clientes.</p>'; return;}
 
   let html = '<table class="data-table"><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Acciones</th></tr></thead><tbody>';
   data.forEach(c=>{
@@ -197,8 +187,8 @@ function renderCustomerTable(data){
     html += `<td>${c.phone||'-'}</td>`;
     html += `<td>${c.email||'-'}</td>`;
     html += `<td>
-      <button class="btn btn-success" onclick="editCustomer(${c.id},'${encodeURIComponent(c.full_name)}','${encodeURIComponent(c.document_id)}','${encodeURIComponent(c.phone||'')}','${encodeURIComponent(c.email||'')}')">Editar</button>
-      <button class="btn btn-danger" onclick="deleteCustomer(${c.id})">Eliminar</button>
+      <button class='btn btn-success' onclick="editCustomer(${c.id},'${encodeURIComponent(c.full_name)}','${encodeURIComponent(c.document_id)}','${encodeURIComponent(c.phone||'')}','${encodeURIComponent(c.email||'')}')">Editar</button>
+      <button class='btn btn-danger' onclick='deleteCustomer(${c.id})'>Eliminar</button>
     </td>`;
     html += '</tr>';
   });
@@ -208,32 +198,32 @@ function renderCustomerTable(data){
 
 function openCustomerModal(){
   editingCustomerId = null;
-  document.getElementById("modalTitle").innerText = "Nuevo Cliente";
-  document.getElementById("name").value = "";
-  document.getElementById("doc").value = "";
-  document.getElementById("phone").value = "";
-  document.getElementById("email").value = "";
-  document.getElementById("customerModal").classList.add("active");
+  document.getElementById('modalTitle').innerText = 'Nuevo Cliente';
+  document.getElementById('name').value = '';
+  document.getElementById('doc').value = '';
+  document.getElementById('phone').value = '';
+  document.getElementById('email').value = '';
+  document.getElementById('customerModal').classList.add('active');
 }
 
 function editCustomer(id,name,doc,phone,email){
   editingCustomerId = id;
-  document.getElementById("modalTitle").innerText = "Editar Cliente";
-  document.getElementById("name").value = decodeURIComponent(name);
-  document.getElementById("doc").value = decodeURIComponent(doc);
-  document.getElementById("phone").value = decodeURIComponent(phone);
-  document.getElementById("email").value = decodeURIComponent(email);
-  document.getElementById("customerModal").classList.add("active");
+  document.getElementById('modalTitle').innerText = 'Editar Cliente';
+  document.getElementById('name').value = decodeURIComponent(name);
+  document.getElementById('doc').value = decodeURIComponent(doc);
+  document.getElementById('phone').value = decodeURIComponent(phone);
+  document.getElementById('email').value = decodeURIComponent(email);
+  document.getElementById('customerModal').classList.add('active');
 }
 
-function closeCustomerModal(){document.getElementById("customerModal").classList.remove("active");}
+function closeCustomerModal(){document.getElementById('customerModal').classList.remove('active');}
 
 async function saveCustomer(){
   const body = {
-    full_name: document.getElementById("name").value,
-    document_id: document.getElementById("doc").value,
-    phone: document.getElementById("phone").value,
-    email: document.getElementById("email").value
+    full_name: document.getElementById('name').value,
+    document_id: document.getElementById('doc').value,
+    phone: document.getElementById('phone').value,
+    email: document.getElementById('email').value
   };
 
   let res;
@@ -244,25 +234,25 @@ async function saveCustomer(){
   }
 
   if(res.ok){
-    showToast(editingCustomerId ? "Cliente actualizado correctamente":"Cliente creado correctamente","success");
+    showToast(editingCustomerId ? 'Cliente actualizado correctamente':'Cliente creado correctamente','success');
     closeCustomerModal();
     fetchCustomers();
-  } else showToast("Error al guardar cliente","error");
+  } else showToast('Error al guardar cliente','error');
 }
 
 async function deleteCustomer(id){
-  if(!confirm("¿Seguro que deseas eliminar este cliente?")) return;
+  if(!confirm('¿Seguro que deseas eliminar este cliente?')) return;
   await fetch('/api/customers/'+id,{method:'DELETE'});
-  showToast("Cliente eliminado","success");
+  showToast('Cliente eliminado','success');
   fetchCustomers();
 }
 
 // ==================== TOAST ====================
 function showToast(msg,type){
-  const toast=document.getElementById("toast");
+  const toast=document.getElementById('toast');
   toast.innerText=msg;
-  toast.className="toast show "+type;
-  setTimeout(()=>{toast.className="toast";},3000);
+  toast.className='toast show '+type;
+  setTimeout(()=>{toast.className='toast';},3000);
 }
 
 // ==================== INICIO ====================
