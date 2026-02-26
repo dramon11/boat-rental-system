@@ -53,48 +53,13 @@ export default {
     <h2>⚓ BoatERP</h2>
     <div class="menu-item active" onclick="showDashboard()">Dashboard</div>
     <div class="menu-item" onclick="loadCustomers()">Clientes</div>
+    <div class="menu-item" onclick="loadBoats()">Botes</div>
   </div>
   <div class="header">
     <div>Panel Administrativo</div>
     <div>Admin</div>
   </div>
-  <div class="content" id="mainContent">
-    <!-- DASHBOARD -->
-    <div id="dashboard">
-      <div class="cards">
-        <div class="card">
-          <h4>Ingresos Hoy</h4>
-          <h2 id="income">$0</h2>
-        </div>
-        <div class="card">
-          <h4>Alquileres Activos</h4>
-          <h2 id="active">0</h2>
-        </div>
-        <div class="card">
-          <h4>Botes Disponibles</h4>
-          <h2 id="boats">0</h2>
-        </div>
-        <div class="card">
-          <h4>Total Clientes</h4>
-          <h2 id="customers">0</h2>
-        </div>
-      </div>
-      <div class="charts">
-        <div class="chart-box">
-          <h4>Resumen General (Barras)</h4>
-          <canvas id="barChart"></canvas>
-        </div>
-        <div class="chart-box">
-          <h4>Tendencia (Línea)</h4>
-          <canvas id="lineChart"></canvas>
-        </div>
-        <div class="chart-box full-width">
-          <h4>Distribución (Pie)</h4>
-          <canvas id="pieChart"></canvas>
-        </div>
-      </div>
-    </div>
-  </div>
+  <div class="content" id="mainContent"></div>
 
   <!-- MODAL CLIENTES -->
   <div id="customerModal" class="modal-overlay">
@@ -111,29 +76,64 @@ export default {
     </div>
   </div>
 
+  <!-- MODAL BOTES -->
+  <div id="boatModal" class="modal-overlay">
+    <div class="modal">
+      <h3 id="boatModalTitle">Nuevo Bote</h3>
+      <input id="boatName" placeholder="Nombre del bote" style="width:100%;margin-bottom:8px"/>
+      <input id="boatType" placeholder="Tipo (Lancha, Yate, Velero...)" style="width:100%;margin-bottom:8px"/>
+      <input id="boatCapacity" placeholder="Capacidad (personas)" type="number" style="width:100%;margin-bottom:8px"/>
+      <input id="boatStatus" placeholder="Estado (available/rented/maintenance)" style="width:100%;margin-bottom:8px"/>
+      <div style="text-align:right;margin-top:10px;">
+        <button class="btn-success" onclick="saveBoat()">Guardar</button>
+        <button class="btn" onclick="closeBoatModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast"></div>
 
   <script>
     let editingCustomerId = null;
+    let editingBoatId = null;
 
-    async function loadDashboard(){
+    // ====================== DASHBOARD TEMPLATE (FIXED) ======================
+    const dashboardHTML = \`
+      <div id="dashboard">
+        <div class="cards">
+          <div class="card"><h4>Ingresos Hoy</h4><h2 id="income">$0</h2></div>
+          <div class="card"><h4>Alquileres Activos</h4><h2 id="active">0</h2></div>
+          <div class="card"><h4>Botes Disponibles</h4><h2 id="boats">0</h2></div>
+          <div class="card"><h4>Total Clientes</h4><h2 id="customers">0</h2></div>
+        </div>
+        <div class="charts">
+          <div class="chart-box"><h4>Resumen General (Barras)</h4><canvas id="barChart"></canvas></div>
+          <div class="chart-box"><h4>Tendencia (Línea)</h4><canvas id="lineChart"></canvas></div>
+          <div class="chart-box full-width"><h4>Distribución (Pie)</h4><canvas id="pieChart"></canvas></div>
+        </div>
+      </div>
+    \`;
+
+    async function loadDashboard() {
+      document.getElementById("mainContent").innerHTML = dashboardHTML;
       const res = await fetch("/api/dashboard");
       const data = await res.json();
-      document.getElementById("mainContent").innerHTML = document.getElementById('dashboard').outerHTML;
+
       document.getElementById("income").innerText = "$" + data.income_today;
       document.getElementById("active").innerText = data.active_rentals;
       document.getElementById("boats").innerText = data.available_boats;
       document.getElementById("customers").innerText = data.total_customers;
-      const values = [data.income_today,data.active_rentals,data.available_boats,data.total_customers];
-      new Chart(document.getElementById("barChart"),{type:"bar",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}});
-      new Chart(document.getElementById("lineChart"),{type:"line",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values,tension:0.4}]}});
-      new Chart(document.getElementById("pieChart"),{type:"pie",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}});
+
+      const values = [data.income_today, data.active_rentals, data.available_boats, data.total_customers];
+      new Chart(document.getElementById("barChart"), { type: "bar", data: { labels: ["Ingresos","Activos","Disponibles","Clientes"], datasets: [{ data: values }] } });
+      new Chart(document.getElementById("lineChart"), { type: "line", data: { labels: ["Ingresos","Activos","Disponibles","Clientes"], datasets: [{ data: values, tension: 0.4 }] } });
+      new Chart(document.getElementById("pieChart"), { type: "pie", data: { labels: ["Ingresos","Activos","Disponibles","Clientes"], datasets: [{ data: values }] } });
     }
 
-    function showDashboard(){loadDashboard();}
+    function showDashboard() { loadDashboard(); }
 
     /* ========================= CLIENTES ========================= */
-    async function loadCustomers(){
+    async function loadCustomers() {
       const container = document.getElementById('mainContent');
       container.innerHTML = \`
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -143,43 +143,41 @@ export default {
             <button class="btn-success" onclick="openCustomerModal()">+ Nuevo Cliente</button>
           </div>
         </div>
-        <div class="card">
-          <div id="customerTable">Cargando clientes...</div>
-        </div>
+        <div class="card"><div id="customerTable">Cargando clientes...</div></div>
       \`;
       await fetchCustomers();
     }
 
-    async function fetchCustomers(){
+    async function fetchCustomers() {
       const res = await fetch('/api/customers');
       const data = await res.json();
       renderCustomerTable(data);
-      document.getElementById("searchInput").addEventListener("input", e=>{
+      const search = document.getElementById("searchInput");
+      if (search) search.addEventListener("input", e => {
         const val = e.target.value.toLowerCase();
-        const filtered = data.filter(c=>c.full_name.toLowerCase().includes(val) || c.document_id.toLowerCase().includes(val));
+        const filtered = data.filter(c => c.full_name.toLowerCase().includes(val) || c.document_id.toLowerCase().includes(val));
         renderCustomerTable(filtered);
       });
     }
 
-    function renderCustomerTable(data){
+    function renderCustomerTable(data) {
       const tableEl = document.getElementById("customerTable");
-      if(!data || data.length===0){tableEl.innerHTML="<p>No hay clientes.</p>"; return;}
+      if (!data || data.length === 0) { tableEl.innerHTML = "<p>No hay clientes.</p>"; return; }
       let html = '<table class="data-table"><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Acciones</th></tr></thead><tbody>';
-      for(let i=0;i<data.length;i++){
-        const c = data[i];
+      for (let c of data) {
         html += '<tr data-id="' + c.id + '">';
-        html += '<td>'+c.full_name+'</td>';
-        html += '<td>'+c.document_id+'</td>';
-        html += '<td>'+(c.phone||'-')+'</td>';
-        html += '<td>'+(c.email||'-')+'</td>';
-        html += '<td><button class="btn btn-success" onclick="editCustomer(this)">Editar</button> <button class="btn btn-danger" onclick="deleteCustomer('+c.id+')">Eliminar</button></td>';
+        html += '<td>' + c.full_name + '</td>';
+        html += '<td>' + c.document_id + '</td>';
+        html += '<td>' + (c.phone || '-') + '</td>';
+        html += '<td>' + (c.email || '-') + '</td>';
+        html += '<td><button class="btn btn-success" onclick="editCustomer(this)">Editar</button> <button class="btn btn-danger" onclick="deleteCustomer(' + c.id + ')">Eliminar</button></td>';
         html += '</tr>';
       }
       html += '</tbody></table>';
       tableEl.innerHTML = html;
     }
 
-    function openCustomerModal(){
+    function openCustomerModal() {
       editingCustomerId = null;
       document.getElementById("modalTitle").textContent = "Nuevo Cliente";
       document.getElementById("name").value = "";
@@ -189,72 +187,146 @@ export default {
       document.getElementById("customerModal").classList.add("active");
     }
 
-    function editCustomer(btn){
+    function editCustomer(btn) {
       const row = btn.closest('tr');
-      const id = row.dataset.id;
-      const name = row.cells[0].textContent;
-      const doc = row.cells[1].textContent;
-      const phone = row.cells[2].textContent === '-' ? '' : row.cells[2].textContent;
-      const email = row.cells[3].textContent === '-' ? '' : row.cells[3].textContent;
-
-      editingCustomerId = parseInt(id);
+      editingCustomerId = parseInt(row.dataset.id);
       document.getElementById("modalTitle").textContent = "Editar Cliente";
-      document.getElementById("name").value = name;
-      document.getElementById("doc").value = doc;
-      document.getElementById("phone").value = phone;
-      document.getElementById("email").value = email;
+      document.getElementById("name").value = row.cells[0].textContent;
+      document.getElementById("doc").value = row.cells[1].textContent;
+      document.getElementById("phone").value = row.cells[2].textContent === '-' ? '' : row.cells[2].textContent;
+      document.getElementById("email").value = row.cells[3].textContent === '-' ? '' : row.cells[3].textContent;
       document.getElementById("customerModal").classList.add("active");
     }
 
-    function closeCustomerModal(){
-      document.getElementById("customerModal").classList.remove("active");
-    }
+    function closeCustomerModal() { document.getElementById("customerModal").classList.remove("active"); }
 
-    async function saveCustomer(){
+    async function saveCustomer() {
       const body = {
         full_name: document.getElementById("name").value,
         document_id: document.getElementById("doc").value,
         phone: document.getElementById("phone").value,
         email: document.getElementById("email").value
       };
-
-      let url = '/api/customers';
-      let method = 'POST';
-      let message = "Cliente creado correctamente";
-
-      if (editingCustomerId !== null) {
-        url += '/' + editingCustomerId;
-        method = 'PUT';
-        message = "Cliente actualizado correctamente";
-      }
-
-      const res = await fetch(url, {
-        method: method,
-        headers: {'Content-Type':'application/json'},
+      const isEdit = editingCustomerId !== null;
+      const res = await fetch(isEdit ? '/api/customers/' + editingCustomerId : '/api/customers', {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
       });
-
-      if(res.ok){
-        showToast(message, "success");
+      if (res.ok) {
+        showToast(isEdit ? "Cliente actualizado correctamente" : "Cliente creado correctamente", "success");
         closeCustomerModal();
         fetchCustomers();
-      } else {
-        showToast("Error al guardar cliente", "error");
-      }
+      } else showToast("Error al guardar cliente", "error");
     }
 
-    async function deleteCustomer(id){
-      if(!confirm("¿Seguro que deseas eliminar este cliente?")) return;
-      await fetch('/api/customers/'+id, {method:'DELETE'});
+    async function deleteCustomer(id) {
+      if (!confirm("¿Seguro que deseas eliminar este cliente?")) return;
+      await fetch('/api/customers/' + id, { method: 'DELETE' });
       showToast("Cliente eliminado", "success");
       fetchCustomers();
     }
 
-    function showToast(msg, type){
+    /* ========================= BOTES ========================= */
+    async function loadBoats() {
+      const container = document.getElementById('mainContent');
+      container.innerHTML = \`
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h2>Botes</h2>
+          <div>
+            <input id="boatSearchInput" class="input-search" placeholder="Buscar por nombre o tipo..." />
+            <button class="btn-success" onclick="openBoatModal()">+ Nuevo Bote</button>
+          </div>
+        </div>
+        <div class="card"><div id="boatTable">Cargando botes...</div></div>
+      \`;
+      await fetchBoats();
+    }
+
+    async function fetchBoats() {
+      const res = await fetch('/api/boats');
+      const data = await res.json();
+      renderBoatTable(data);
+      const search = document.getElementById("boatSearchInput");
+      if (search) search.addEventListener("input", e => {
+        const val = e.target.value.toLowerCase();
+        const filtered = data.filter(b => b.name.toLowerCase().includes(val) || b.type.toLowerCase().includes(val));
+        renderBoatTable(filtered);
+      });
+    }
+
+    function renderBoatTable(data) {
+      const tableEl = document.getElementById("boatTable");
+      if (!data || data.length === 0) { tableEl.innerHTML = "<p>No hay botes.</p>"; return; }
+      let html = '<table class="data-table"><thead><tr><th>Nombre</th><th>Tipo</th><th>Capacidad</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
+      for (let b of data) {
+        html += '<tr data-id="' + b.id + '">';
+        html += '<td>' + b.name + '</td>';
+        html += '<td>' + b.type + '</td>';
+        html += '<td>' + b.capacity + '</td>';
+        html += '<td>' + b.status + '</td>';
+        html += '<td><button class="btn btn-success" onclick="editBoat(this)">Editar</button> <button class="btn btn-danger" onclick="deleteBoat(' + b.id + ')">Eliminar</button></td>';
+        html += '</tr>';
+      }
+      html += '</tbody></table>';
+      tableEl.innerHTML = html;
+    }
+
+    function openBoatModal() {
+      editingBoatId = null;
+      document.getElementById("boatModalTitle").textContent = "Nuevo Bote";
+      document.getElementById("boatName").value = "";
+      document.getElementById("boatType").value = "";
+      document.getElementById("boatCapacity").value = "";
+      document.getElementById("boatStatus").value = "";
+      document.getElementById("boatModal").classList.add("active");
+    }
+
+    function editBoat(btn) {
+      const row = btn.closest('tr');
+      editingBoatId = parseInt(row.dataset.id);
+      document.getElementById("boatModalTitle").textContent = "Editar Bote";
+      document.getElementById("boatName").value = row.cells[0].textContent;
+      document.getElementById("boatType").value = row.cells[1].textContent;
+      document.getElementById("boatCapacity").value = row.cells[2].textContent;
+      document.getElementById("boatStatus").value = row.cells[3].textContent;
+      document.getElementById("boatModal").classList.add("active");
+    }
+
+    function closeBoatModal() { document.getElementById("boatModal").classList.remove("active"); }
+
+    async function saveBoat() {
+      const body = {
+        name: document.getElementById("boatName").value,
+        type: document.getElementById("boatType").value,
+        capacity: parseInt(document.getElementById("boatCapacity").value) || 0,
+        status: document.getElementById("boatStatus").value
+      };
+      const isEdit = editingBoatId !== null;
+      const res = await fetch(isEdit ? '/api/boats/' + editingBoatId : '/api/boats', {
+        method: isEdit ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (res.ok) {
+        showToast(isEdit ? "Bote actualizado correctamente" : "Bote creado correctamente", "success");
+        closeBoatModal();
+        fetchBoats();
+      } else showToast("Error al guardar bote", "error");
+    }
+
+    async function deleteBoat(id) {
+      if (!confirm("¿Seguro que deseas eliminar este bote?")) return;
+      await fetch('/api/boats/' + id, { method: 'DELETE' });
+      showToast("Bote eliminado", "success");
+      fetchBoats();
+    }
+
+    function showToast(msg, type) {
       const toast = document.getElementById("toast");
       toast.innerText = msg;
-      toast.className = "toast show " + type;
-      setTimeout(()=>{toast.className="toast";},3000);
+      toast.className = "toast show " + (type || "");
+      setTimeout(() => { toast.className = "toast"; }, 3000);
     }
 
     /* CARGAMOS DASHBOARD AL INICIO */
@@ -267,7 +339,7 @@ export default {
       }
 
       /* ============================= API DASHBOARD ============================== */
-      if(url.pathname==="/api/dashboard"){
+      if (url.pathname === "/api/dashboard") {
         const income = await env.DB.prepare("SELECT IFNULL(SUM(total_amount),0) as total FROM rentals WHERE DATE(created_at)=DATE('now')").first();
         const active = await env.DB.prepare("SELECT COUNT(*) as total FROM rentals WHERE status='active'").first();
         const boats = await env.DB.prepare("SELECT COUNT(*) as total FROM boats WHERE status='available'").first();
@@ -281,18 +353,18 @@ export default {
       }
 
       /* ============================= API CLIENTES ============================== */
-      if(url.pathname.startsWith("/api/customers")){
-        if(request.method==="GET"){
+      if (url.pathname.startsWith("/api/customers")) {
+        if (request.method === "GET") {
           const rows = await env.DB.prepare("SELECT id, full_name, document_id, phone, email FROM customers").all();
           return json(rows.results || []);
         }
-        if(request.method==="POST"){
+        if (request.method === "POST") {
           const body = await request.json();
           await env.DB.prepare("INSERT INTO customers (full_name, document_id, phone, email) VALUES (?,?,?,?)")
             .bind(body.full_name, body.document_id, body.phone, body.email).run();
           return json({ok:true});
         }
-        if(request.method==="PUT"){
+        if (request.method === "PUT") {
           const parts = url.pathname.split("/");
           const id = parts[parts.length-1];
           const body = await request.json();
@@ -300,7 +372,7 @@ export default {
             .bind(body.full_name, body.document_id, body.phone, body.email, id).run();
           return json({ok:true});
         }
-        if(request.method==="DELETE"){
+        if (request.method === "DELETE") {
           const parts = url.pathname.split("/");
           const id = parts[parts.length-1];
           await env.DB.prepare("DELETE FROM customers WHERE id=?").bind(id).run();
@@ -308,8 +380,36 @@ export default {
         }
       }
 
+      /* ============================= API BOTES ============================== */
+      if (url.pathname.startsWith("/api/boats")) {
+        if (request.method === "GET") {
+          const rows = await env.DB.prepare("SELECT id, name, type, capacity, status FROM boats").all();
+          return json(rows.results || []);
+        }
+        if (request.method === "POST") {
+          const body = await request.json();
+          await env.DB.prepare("INSERT INTO boats (name, type, capacity, status) VALUES (?,?,?,?)")
+            .bind(body.name, body.type, body.capacity, body.status).run();
+          return json({ok:true});
+        }
+        if (request.method === "PUT") {
+          const parts = url.pathname.split("/");
+          const id = parts[parts.length-1];
+          const body = await request.json();
+          await env.DB.prepare("UPDATE boats SET name=?, type=?, capacity=?, status=? WHERE id=?")
+            .bind(body.name, body.type, body.capacity, body.status, id).run();
+          return json({ok:true});
+        }
+        if (request.method === "DELETE") {
+          const parts = url.pathname.split("/");
+          const id = parts[parts.length-1];
+          await env.DB.prepare("DELETE FROM boats WHERE id=?").bind(id).run();
+          return json({ok:true});
+        }
+      }
+
       return json({error:"Not Found"},404);
-    } catch(err){
+    } catch(err) {
       return json({error:err.message},500);
     }
   }
