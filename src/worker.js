@@ -52,7 +52,7 @@ export default {
 </head>
 <body>
   <div class="sidebar">
-    <h2>⚓ BoatERP</h2>
+    <h2>⚓ Boat SaaS</h2>
     <div class="menu-item active" onclick="showDashboard()"><span>📊</span> Dashboard</div>
     <div class="menu-item" onclick="loadCustomers()"><span>👥</span> Clientes</div>
     <div class="menu-item" onclick="loadBoats()"><span>⛵</span> Botes</div>
@@ -535,5 +535,6 @@ export default {
     }
   }
 }
+
 
 
