@@ -108,13 +108,13 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
 <!-- MODAL CLIENTES -->
 <div id="customerModal" class="modal-overlay">
   <div class="modal">
-    <h3>Nuevo Cliente</h3>
+    <h3 id="modalTitle">Nuevo Cliente</h3>
     <input id="name" placeholder="Nombre completo" style="width:100%;margin-bottom:8px"/>
     <input id="doc" placeholder="Documento" style="width:100%;margin-bottom:8px"/>
     <input id="phone" placeholder="Teléfono" style="width:100%;margin-bottom:8px"/>
     <input id="email" placeholder="Email" style="width:100%;margin-bottom:8px"/>
     <div style="text-align:right;margin-top:10px;">
-      <button class="btn-success" onclick="saveCustomer()">Guardar</button>
+      <button class="btn-success" id="saveBtn" onclick="saveCustomer()">Guardar</button>
       <button class="btn" onclick="closeCustomerModal()">Cancelar</button>
     </div>
   </div>
@@ -123,6 +123,8 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
 <div id="toast" class="toast"></div>
 
 <script>
+let editingCustomerId = null; // Para saber si estamos editando o creando
+
 async function loadDashboard(){
   const res = await fetch("/api/dashboard");
   const data = await res.json();
@@ -187,14 +189,36 @@ function renderCustomerTable(data){
     html += '<td>'+c.document_id+'</td>';
     html += '<td>'+(c.phone||'-')+'</td>';
     html += '<td>'+(c.email||'-')+'</td>';
-    html += '<td><button class="btn btn-danger" onclick="deleteCustomer('+c.id+')">Eliminar</button></td>';
+    html += '<td>' +
+            '<button class="btn btn-success" onclick="editCustomer('+c.id+',\''+c.full_name+'\',\''+c.document_id+'\',\''+(c.phone||'')+'\',\''+(c.email||'')+'\')">Editar</button> ' +
+            '<button class="btn btn-danger" onclick="deleteCustomer('+c.id+')">Eliminar</button>' +
+            '</td>';
     html += '</tr>';
   }
   html += '</tbody></table>';
   tableEl.innerHTML = html;
 }
 
-function openCustomerModal(){document.getElementById("customerModal").classList.add("active");}
+function openCustomerModal(){
+  document.getElementById("modalTitle").innerText = "Nuevo Cliente";
+  editingCustomerId = null;
+  document.getElementById("name").value = "";
+  document.getElementById("doc").value = "";
+  document.getElementById("phone").value = "";
+  document.getElementById("email").value = "";
+  document.getElementById("customerModal").classList.add("active");
+}
+
+function editCustomer(id, name, doc, phone, email){
+  editingCustomerId = id;
+  document.getElementById("modalTitle").innerText = "Editar Cliente";
+  document.getElementById("name").value = name;
+  document.getElementById("doc").value = doc;
+  document.getElementById("phone").value = phone;
+  document.getElementById("email").value = email;
+  document.getElementById("customerModal").classList.add("active");
+}
+
 function closeCustomerModal(){document.getElementById("customerModal").classList.remove("active");}
 
 async function saveCustomer(){
@@ -204,9 +228,19 @@ async function saveCustomer(){
     phone: document.getElementById("phone").value,
     email: document.getElementById("email").value
   };
-  const res = await fetch('/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-  if(res.ok){showToast("Cliente creado correctamente","success");closeCustomerModal();fetchCustomers();}
-  else showToast("Error al crear cliente","error");
+
+  let res;
+  if(editingCustomerId){
+    res = await fetch('/api/customers/'+editingCustomerId,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  } else {
+    res = await fetch('/api/customers',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  }
+
+  if(res.ok){
+    showToast(editingCustomerId ? "Cliente actualizado correctamente":"Cliente creado correctamente","success");
+    closeCustomerModal();
+    fetchCustomers();
+  } else showToast("Error al guardar cliente","error");
 }
 
 async function deleteCustomer(id){
@@ -262,6 +296,14 @@ loadDashboard();
           const body = await request.json();
           await env.DB.prepare("INSERT INTO customers (full_name, document_id, phone, email) VALUES (?,?,?,?)")
             .bind(body.full_name, body.document_id, body.phone, body.email).run();
+          return json({ok:true});
+        }
+        if(request.method==="PUT"){
+          const parts = url.pathname.split("/");
+          const id = parts[parts.length-1];
+          const body = await request.json();
+          await env.DB.prepare("UPDATE customers SET full_name=?, document_id=?, phone=?, email=? WHERE id=?")
+            .bind(body.full_name, body.document_id, body.phone, body.email, id).run();
           return json({ok:true});
         }
         if(request.method==="DELETE"){
