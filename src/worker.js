@@ -23,7 +23,7 @@ export default {
     body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
     .sidebar{width:240px;height:100vh;background:#0f172a;color:#fff;position:fixed;padding:25px 20px;}
     .sidebar h2{margin:0 0 40px 0;font-weight:700;}
-    .menu-item{padding:12px 14px;border-radius:8px;margin-bottom:10px;cursor:pointer;transition:.2s;}
+    .menu-item{padding:12px 14px;border-radius:8px;margin-bottom:10px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:12px;}
     .menu-item:hover{background:#1e293b;}
     .menu-item.active{background:#2563eb;}
     .header{margin-left:240px;height:65px;background:#1e3a8a;display:flex;align-items:center;justify-content:space-between;padding:0 30px;color:white;font-weight:600;}
@@ -51,9 +51,9 @@ export default {
 <body>
   <div class="sidebar">
     <h2>⚓ BoatERP</h2>
-    <div class="menu-item active" onclick="showDashboard()">Dashboard</div>
-    <div class="menu-item" onclick="loadCustomers()">Clientes</div>
-    <div class="menu-item" onclick="loadBoats()">Botes</div>
+    <div class="menu-item active" onclick="showDashboard()"><span>📊</span> Dashboard</div>
+    <div class="menu-item" onclick="loadCustomers()"><span>👥</span> Clientes</div>
+    <div class="menu-item" onclick="loadBoats()"><span>⛵</span> Botes</div>
   </div>
   <div class="header">
     <div>Panel Administrativo</div>
@@ -97,7 +97,6 @@ export default {
     let editingCustomerId = null;
     let editingBoatId = null;
 
-    // ====================== DASHBOARD TEMPLATE (FIXED) ======================
     const dashboardHTML = \`
       <div id="dashboard">
         <div class="cards">
