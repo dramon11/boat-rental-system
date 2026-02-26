@@ -697,7 +697,7 @@ export default {
         } catch {}
 
         try {
-          const boats = await env.DB.prepare("SELECT COUNT(*) as total FROM boats WHERE TRIM(LOWER(status)) = 'available'").first();
+          const boats = await env.DB.prepare("SELECT COUNT(*) as total FROM boats WHERE TRIM(LOWER(status)) = 'disponible'").first();
           available_boats = boats?.total ?? 0;
         } catch {}
 
@@ -827,3 +827,4 @@ export default {
     }
   }
 }
+
