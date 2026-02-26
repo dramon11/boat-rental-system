@@ -8,7 +8,6 @@ export default {
     });
 
     try {
-      /* ============================= FRONTEND ERP ============================== */
       if (url.pathname === "/" && request.method === "GET") {
         const html = `
 <!DOCTYPE html>
@@ -33,8 +32,9 @@ export default {
     .card h4{margin:0;font-weight:600;color:#64748b;}
     .card h2{margin:10px 0 0 0;}
     .charts{margin-top:40px;display:grid;grid-template-columns:repeat(2,1fr);gap:30px;}
-    .chart-box{background:white;padding:25px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,0.05);}
+    .chart-box{background:white;padding:25px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,0.05);height:320px;}
     .full-width{grid-column:span 2;}
+    .chart-container{height:100%;position:relative;}
     .data-table{width:100%;border-collapse:collapse;}
     .data-table th, .data-table td{padding:10px;border-bottom:1px solid #ccc;text-align:left;}
     .btn{padding:6px 12px;border:none;border-radius:4px;cursor:pointer;}
@@ -106,15 +106,25 @@ export default {
           <div class="card"><h4>Total Clientes</h4><h2 id="customers">0</h2></div>
         </div>
         <div class="charts">
-          <div class="chart-box"><h4>Resumen General (Barras)</h4><canvas id="barChart"></canvas></div>
-          <div class="chart-box"><h4>Tendencia (Línea)</h4><canvas id="lineChart"></canvas></div>
-          <div class="chart-box full-width"><h4>Distribución (Pie)</h4><canvas id="pieChart"></canvas></div>
+          <div class="chart-box">
+            <h4>Resumen General (Barras)</h4>
+            <div class="chart-container"><canvas id="barChart"></canvas></div>
+          </div>
+          <div class="chart-box">
+            <h4>Tendencia (Línea)</h4>
+            <div class="chart-container"><canvas id="lineChart"></canvas></div>
+          </div>
+          <div class="chart-box full-width">
+            <h4>Distribución (Pie)</h4>
+            <div class="chart-container"><canvas id="pieChart"></canvas></div>
+          </div>
         </div>
       </div>
     \`;
 
     async function loadDashboard() {
       document.getElementById("mainContent").innerHTML = dashboardHTML;
+
       const res = await fetch("/api/dashboard");
       const data = await res.json();
 
@@ -124,15 +134,50 @@ export default {
       document.getElementById("customers").innerText = data.total_customers;
 
       const values = [data.income_today, data.active_rentals, data.available_boats, data.total_customers];
-      new Chart(document.getElementById("barChart"), { type: "bar", data: { labels: ["Ingresos","Activos","Disponibles","Clientes"], datasets: [{ data: values }] } });
-      new Chart(document.getElementById("lineChart"), { type: "line", data: { labels: ["Ingresos","Activos","Disponibles","Clientes"], datasets: [{ data: values, tension: 0.4 }] } });
-      new Chart(document.getElementById("pieChart"), { type: "pie", data: { labels: ["Ingresos","Activos","Disponibles","Clientes"], datasets: [{ data: values }] } });
+      const labels = ["Ingresos Hoy", "Alquileres Activos", "Botes Disponibles", "Total Clientes"];
+
+      // Destruir gráficos previos si existen (importante al cambiar de sección)
+      if (window.barChart) window.barChart.destroy();
+      if (window.lineChart) window.lineChart.destroy();
+      if (window.pieChart) window.pieChart.destroy();
+
+      const commonOptions = {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { position: 'bottom' } }
+      };
+
+      window.barChart = new Chart(document.getElementById("barChart"), {
+        type: "bar",
+        data: { labels, datasets: [{ label: "Cantidad", data: values, backgroundColor: ['#3b82f6','#10b981','#f59e0b','#8b5cf6'] }] },
+        options: commonOptions
+      });
+
+      window.lineChart = new Chart(document.getElementById("lineChart"), {
+        type: "line",
+        data: { labels, datasets: [{ label: "Tendencia", data: values, borderColor: '#3b82f6', tension: 0.4 }] },
+        options: commonOptions
+      });
+
+      window.pieChart = new Chart(document.getElementById("pieChart"), {
+        type: "pie",
+        data: { labels, datasets: [{ data: values, backgroundColor: ['#3b82f6','#10b981','#f59e0b','#8b5cf6'] }] },
+        options: { ...commonOptions, plugins: { legend: { position: 'right' } } }
+      });
     }
 
-    function showDashboard() { loadDashboard(); }
+    function showDashboard() {
+      // Limpiar clase active de otros items
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      document.querySelector('.menu-item[onclick="showDashboard()"]').classList.add('active');
+      loadDashboard();
+    }
 
     /* ========================= CLIENTES ========================= */
     async function loadCustomers() {
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      document.querySelector('.menu-item[onclick="loadCustomers()"]').classList.add('active');
+
       const container = document.getElementById('mainContent');
       container.innerHTML = \`
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -228,6 +273,9 @@ export default {
 
     /* ========================= BOTES ========================= */
     async function loadBoats() {
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      document.querySelector('.menu-item[onclick="loadBoats()"]').classList.add('active');
+
       const container = document.getElementById('mainContent');
       container.innerHTML = \`
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
