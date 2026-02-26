@@ -147,7 +147,7 @@ function showDashboard() {
 // ==================== CLIENTES ====================
 async function loadCustomers(){
   const container = document.getElementById('mainContent');
-  container.innerHTML = `
+  container.innerHTML = \`
     <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;'>
       <h2>Clientes</h2>
       <div>
@@ -158,7 +158,7 @@ async function loadCustomers(){
     <div class='card'>
       <div id='customerTable'>Cargando clientes...</div>
     </div>
-  `;
+  \`;
   await fetchCustomers();
 }
 
