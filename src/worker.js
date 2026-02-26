@@ -114,7 +114,7 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
     <input id="phone" placeholder="Teléfono" style="width:100%;margin-bottom:8px"/>
     <input id="email" placeholder="Email" style="width:100%;margin-bottom:8px"/>
     <div style="text-align:right;margin-top:10px;">
-      <button class="btn-success" id="saveBtn" onclick="saveCustomer()">Guardar</button>
+      <button class="btn-success" onclick="saveCustomer()">Guardar</button>
       <button class="btn" onclick="closeCustomerModal()">Cancelar</button>
     </div>
   </div>
@@ -123,35 +123,41 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
 <div id="toast" class="toast"></div>
 
 <script>
-let editingCustomerId = null; // Para saber si estamos editando o creando
+let editingCustomerId = null;
 
-async function loadDashboard(){
-  const res = await fetch("/api/dashboard");
-  const data = await res.json();
+// ==================== DASHBOARD ====================
+function showDashboard() {
+  fetch("/api/dashboard").then(res=>res.json()).then(data=>{
+    document.getElementById("mainContent").innerHTML = document.getElementById('dashboard').outerHTML;
 
-  document.getElementById("mainContent").innerHTML = document.getElementById('dashboard').outerHTML;
-  document.getElementById("income").innerText = "$" + data.income_today;
-  document.getElementById("active").innerText = data.active_rentals;
-  document.getElementById("boats").innerText = data.available_boats;
-  document.getElementById("customers").innerText = data.total_customers;
+    document.getElementById("income").innerText = "$" + data.income_today;
+    document.getElementById("active").innerText = data.active_rentals;
+    document.getElementById("boats").innerText = data.available_boats;
+    document.getElementById("customers").innerText = data.total_customers;
 
-  const values = [data.income_today,data.active_rentals,data.available_boats,data.total_customers];
+    const values = [data.income_today,data.active_rentals,data.available_boats,data.total_customers];
 
-  new Chart(document.getElementById("barChart"),{type:"bar",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}});
+    new Chart(document.getElementById("barChart"),{
+      type:"bar",
+      data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}
+    });
 
-  new Chart(document.getElementById("lineChart"),{type:"line",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values,tension:0.4}]}});
+    new Chart(document.getElementById("lineChart"),{
+      type:"line",
+      data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values,tension:0.4}]}
+    });
 
-  new Chart(document.getElementById("pieChart"),{type:"pie",data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}});
-
+    new Chart(document.getElementById("pieChart"),{
+      type:"pie",
+      data:{labels:["Ingresos","Activos","Disponibles","Clientes"],datasets:[{data:values}]}
+    });
+  });
 }
-function showDashboard(){loadDashboard();}
 
-/* =========================
-   CLIENTES
-========================= */
+// ==================== CLIENTES ====================
 async function loadCustomers(){
   const container = document.getElementById('mainContent');
-  container.innerHTML = \`
+  container.innerHTML = `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
       <h2>Clientes</h2>
       <div>
@@ -162,7 +168,7 @@ async function loadCustomers(){
     <div class="card">
       <div id="customerTable">Cargando clientes...</div>
     </div>
-  \`;
+  `;
   await fetchCustomers();
 }
 
@@ -171,7 +177,8 @@ async function fetchCustomers(){
   const data = await res.json();
   renderCustomerTable(data);
 
-  document.getElementById("searchInput").addEventListener("input", e=>{
+  const searchInput = document.getElementById("searchInput");
+  searchInput.addEventListener("input", e=>{
     const val = e.target.value.toLowerCase();
     const filtered = data.filter(c=>c.full_name.toLowerCase().includes(val) || c.document_id.toLowerCase().includes(val));
     renderCustomerTable(filtered);
@@ -181,27 +188,27 @@ async function fetchCustomers(){
 function renderCustomerTable(data){
   const tableEl = document.getElementById("customerTable");
   if(!data || data.length===0){tableEl.innerHTML="<p>No hay clientes.</p>"; return;}
+
   let html = '<table class="data-table"><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Acciones</th></tr></thead><tbody>';
-  for(let i=0;i<data.length;i++){
-    const c = data[i];
+  data.forEach(c=>{
     html += '<tr>';
-    html += '<td>'+c.full_name+'</td>';
-    html += '<td>'+c.document_id+'</td>';
-    html += '<td>'+(c.phone||'-')+'</td>';
-    html += '<td>'+(c.email||'-')+'</td>';
-    html += '<td>' +
-            '<button class="btn btn-success" onclick="editCustomer('+c.id+',\''+c.full_name+'\',\''+c.document_id+'\',\''+(c.phone||'')+'\',\''+(c.email||'')+'\')">Editar</button> ' +
-            '<button class="btn btn-danger" onclick="deleteCustomer('+c.id+')">Eliminar</button>' +
-            '</td>';
+    html += `<td>${c.full_name}</td>`;
+    html += `<td>${c.document_id}</td>`;
+    html += `<td>${c.phone||'-'}</td>`;
+    html += `<td>${c.email||'-'}</td>`;
+    html += `<td>
+      <button class="btn btn-success" onclick="editCustomer(${c.id},'${encodeURIComponent(c.full_name)}','${encodeURIComponent(c.document_id)}','${encodeURIComponent(c.phone||'')}','${encodeURIComponent(c.email||'')}')">Editar</button>
+      <button class="btn btn-danger" onclick="deleteCustomer(${c.id})">Eliminar</button>
+    </td>`;
     html += '</tr>';
-  }
+  });
   html += '</tbody></table>';
   tableEl.innerHTML = html;
 }
 
 function openCustomerModal(){
-  document.getElementById("modalTitle").innerText = "Nuevo Cliente";
   editingCustomerId = null;
+  document.getElementById("modalTitle").innerText = "Nuevo Cliente";
   document.getElementById("name").value = "";
   document.getElementById("doc").value = "";
   document.getElementById("phone").value = "";
@@ -209,13 +216,13 @@ function openCustomerModal(){
   document.getElementById("customerModal").classList.add("active");
 }
 
-function editCustomer(id, name, doc, phone, email){
+function editCustomer(id,name,doc,phone,email){
   editingCustomerId = id;
   document.getElementById("modalTitle").innerText = "Editar Cliente";
-  document.getElementById("name").value = name;
-  document.getElementById("doc").value = doc;
-  document.getElementById("phone").value = phone;
-  document.getElementById("email").value = email;
+  document.getElementById("name").value = decodeURIComponent(name);
+  document.getElementById("doc").value = decodeURIComponent(doc);
+  document.getElementById("phone").value = decodeURIComponent(phone);
+  document.getElementById("email").value = decodeURIComponent(email);
   document.getElementById("customerModal").classList.add("active");
 }
 
@@ -250,6 +257,7 @@ async function deleteCustomer(id){
   fetchCustomers();
 }
 
+// ==================== TOAST ====================
 function showToast(msg,type){
   const toast=document.getElementById("toast");
   toast.innerText=msg;
@@ -257,9 +265,8 @@ function showToast(msg,type){
   setTimeout(()=>{toast.className="toast";},3000);
 }
 
-/* CARGAMOS DASHBOARD AL INICIO */
-loadDashboard();
-
+// ==================== INICIO ====================
+showDashboard();
 </script>
 </body>
 </html>`;
