@@ -17,10 +17,10 @@ export default {
         const html = `<!DOCTYPE html>
 <html>
 <head>
-<meta charset="UTF-8" />
+<meta charset='UTF-8' />
 <title>Boat Rental ERP</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href='https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap' rel='stylesheet'>
+<script src='https://cdn.jsdelivr.net/npm/chart.js'></script>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
@@ -65,7 +65,6 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
 </div>
 
 <div class='content' id='mainContent'>
-
   <!-- DASHBOARD -->
   <div id='dashboard'>
     <div class='cards'>
@@ -102,7 +101,6 @@ body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
       </div>
     </div>
   </div>
-
 </div>
 
 <!-- MODAL CLIENTES -->
@@ -147,18 +145,16 @@ function showDashboard() {
 // ==================== CLIENTES ====================
 async function loadCustomers(){
   const container = document.getElementById('mainContent');
-  container.innerHTML = \`
-    <div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;'>
-      <h2>Clientes</h2>
-      <div>
-        <input id='searchInput' class='input-search' placeholder='Buscar por nombre o documento...' />
-        <button class='btn-success' onclick='openCustomerModal()'>+ Nuevo Cliente</button>
-      </div>
-    </div>
-    <div class='card'>
-      <div id='customerTable'>Cargando clientes...</div>
-    </div>
-  \`;
+  container.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">'+
+      '<h2>Clientes</h2>'+
+      '<div>'+
+        '<input id="searchInput" class="input-search" placeholder="Buscar por nombre o documento..." />'+
+        '<button class="btn-success" onclick="openCustomerModal()">+ Nuevo Cliente</button>'+
+      '</div>'+
+    '</div>'+
+    '<div class="card">'+
+      '<div id="customerTable">Cargando clientes...</div>'+
+    '</div>';
   await fetchCustomers();
 }
 
@@ -182,14 +178,14 @@ function renderCustomerTable(data){
   let html = '<table class="data-table"><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Acciones</th></tr></thead><tbody>';
   data.forEach(c=>{
     html += '<tr>';
-    html += `<td>${c.full_name}</td>`;
-    html += `<td>${c.document_id}</td>`;
-    html += `<td>${c.phone||'-'}</td>`;
-    html += `<td>${c.email||'-'}</td>`;
-    html += `<td>
-      <button class='btn btn-success' onclick="editCustomer(${c.id},'${encodeURIComponent(c.full_name)}','${encodeURIComponent(c.document_id)}','${encodeURIComponent(c.phone||'')}','${encodeURIComponent(c.email||'')}')">Editar</button>
-      <button class='btn btn-danger' onclick='deleteCustomer(${c.id})'>Eliminar</button>
-    </td>`;
+    html += '<td>' + c.full_name + '</td>';
+    html += '<td>' + c.document_id + '</td>';
+    html += '<td>' + (c.phone||'-') + '</td>';
+    html += '<td>' + (c.email||'-') + '</td>';
+    html += '<td>'+
+      "<button class='btn btn-success' onclick=\"editCustomer("+c.id+",'"+encodeURIComponent(c.full_name)+"','"+encodeURIComponent(c.document_id)+"','"+encodeURIComponent(c.phone||'')+"','"+encodeURIComponent(c.email||'')+"')\">Editar</button> "+
+      "<button class='btn btn-danger' onclick='deleteCustomer("+c.id+")'>Eliminar</button>"+
+    '</td>';
     html += '</tr>';
   });
   html += '</tbody></table>';
