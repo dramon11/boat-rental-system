@@ -1043,5 +1043,10 @@ if (url.pathname.startsWith("/api/invoices")) {
 
     return json({ success: false, error: "Método no permitido" }, 405);
 }
+   }
+  }
+}
+
+
 
 
