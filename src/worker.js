@@ -5,7 +5,6 @@ export default {
       status,
       headers: { "Content-Type": "application/json" },
     });
-
     try {
       if (url.pathname === "/" && request.method === "GET") {
         const html = `
@@ -120,7 +119,7 @@ export default {
     </div>
   </div>
 
-  <!-- MODAL RESERVAS – profesional -->
+  <!-- MODAL RESERVAS -->
   <div id="reservationModal" class="modal-overlay">
     <div class="modal" style="width:520px">
       <h3 id="reservationModalTitle">Nueva Reserva</h3>
@@ -130,23 +129,19 @@ export default {
       </div>
       <div class="form-group">
         <label>Bote</label>
-        <select id="boatId" onchange="calculateDurationAndTotal()"></select>
+        <select id="boatId"></select>
       </div>
       <div class="form-group">
         <label>Inicio</label>
-        <input id="startTime" type="datetime-local" onchange="calculateDurationAndTotal()">
+        <input id="startTime" type="datetime-local">
       </div>
       <div class="form-group">
         <label>Fin</label>
-        <input id="endTime" type="datetime-local" onchange="calculateDurationAndTotal()">
+        <input id="endTime" type="datetime-local">
       </div>
       <div class="form-group">
         <label>Duración (horas)</label>
-        <input id="duration" type="number" step="0.5" readonly style="background:#f8fafc;">
-      </div>
-      <div class="form-group">
-        <label>Total estimado</label>
-        <input id="totalAmount" type="text" readonly style="background:#f8fafc;font-weight:bold;">
+        <input id="duration" type="number" step="0.5">
       </div>
       <div style="text-align:right;margin-top:20px;">
         <button class="btn" onclick="closeReservationModal()">Cancelar</button>
@@ -155,13 +150,13 @@ export default {
     </div>
   </div>
 
-  <!-- MODAL FACTURAS – profesional -->
+  <!-- MODAL FACTURAS -->
   <div id="invoiceModal" class="modal-overlay">
     <div class="modal" style="width:520px">
       <h3 id="invoiceModalTitle">Nueva Factura</h3>
       <div class="form-group">
         <label>Reserva (opcional)</label>
-        <select id="reservationId" onchange="loadFromReservation()"></select>
+        <select id="reservationId" onchange="loadReservationForInvoice()"></select>
       </div>
       <div class="form-group">
         <label>Cliente</label>
@@ -203,7 +198,7 @@ export default {
     let editingInvoiceId = null;
     let charts = {};
 
-    // Dashboard (sin cambios)
+    // Dashboard – corregido para usar tablas reales
     const dashboardHTML = \`
       <div id="dashboard">
         <div class="cards">
@@ -223,19 +218,13 @@ export default {
         const res = await fetch("/api/dashboard");
         if (!res.ok) throw new Error(\`Status \${res.status}\`);
         const data = await res.json();
-        document.getElementById("income").innerText = "$" + (data.income_today ?? 0);
-        document.getElementById("active").innerText = data.active_rentals ?? 0;
-        document.getElementById("boats").innerText = data.available_boats ?? 0;
-        document.getElementById("customers").innerText = data.total_customers ?? 0;
-        const values = [data.income_today ?? 0, data.active_rentals ?? 0, data.available_boats ?? 0, data.total_customers ?? 0];
-        const labels = ["Ingresos Hoy", "Reservas Activas", "Botes Disponibles", "Clientes"];
-        const opts = { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } };
-        charts.bar = new Chart(document.getElementById("barChart"), { type: 'bar', data: { labels, datasets: [{ data: values, backgroundColor: ['#3b82f6','#10b981','#f59e0b','#8b5cf6'] }] }, options: opts });
-        charts.line = new Chart(document.getElementById("lineChart"), { type: 'line', data: { labels, datasets: [{ data: values, tension: 0.4, borderColor: '#3b82f6' }] }, options: opts });
-        charts.pie = new Chart(document.getElementById("pieChart"), { type: 'pie', data: { labels, datasets: [{ data: values, backgroundColor: ['#3b82f6','#10b981','#f59e0b','#8b5cf6'] }] }, options: { ...opts, plugins: { legend: { position: 'right' } } } });
+        document.getElementById("income").innerText = "$" + Number(data.income_today || 0).toLocaleString('es-DO', {minimumFractionDigits:2});
+        document.getElementById("active").innerText = data.active_reservations || 0;
+        document.getElementById("boats").innerText = data.available_boats || 0;
+        document.getElementById("customers").innerText = data.total_customers || 0;
       } catch (err) {
         console.error("Dashboard error:", err);
-        showToast("Error cargando dashboard", "error");
+        showToast("Error cargando dashboard: " + err.message, "error");
       }
     }
     function showDashboard() { loadDashboard(); }
@@ -295,7 +284,7 @@ export default {
       el.innerHTML = html;
     }
 
-    // Botes (sin cambios)
+    // Botes – con precios
     async function loadBoats() {
       document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
       document.querySelector('.menu-item[onclick="loadBoats()"]').classList.add('active');
@@ -428,7 +417,7 @@ export default {
       }
     }
 
-    // Reservas – profesional
+    // Reservas – corregida y profesional
     async function loadReservations() {
       document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
       document.querySelector('.menu-item[onclick="loadReservations()"]').classList.add('active');
@@ -470,8 +459,8 @@ export default {
       let html = '<table class="data-table"><thead><tr><th>Cliente</th><th>Bote</th><th>Inicio</th><th>Fin</th><th>Duración (h)</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
       data.forEach(r => {
         html += \`<tr data-id="\${r.id}">
-          <td>\${r.customer_name || '-'}</td>
-          <td>\${r.boat_name || '-'}</td>
+          <td>\${r.customer_name || r.customer_id || '-'}</td>
+          <td>\${r.boat_name || r.boat_id || '-'}</td>
           <td>\${r.start_time || '-'}</td>
           <td>\${r.end_time || '-'}</td>
           <td>\${r.duration_hours || '-'}</td>
@@ -600,7 +589,7 @@ export default {
       document.getElementById("reservationModal").classList.remove("active");
     }
 
-    // Facturación
+    // Facturación – profesional
     async function loadInvoices() {
       document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
       document.querySelector('.menu-item[onclick="loadInvoices()"]').classList.add('active');
@@ -668,6 +657,7 @@ export default {
       resSelect.innerHTML = '<option value="">Cargando reservas...</option>';
       try {
         const res = await fetch('/api/reservations');
+        if (!res.ok) throw new Error('Reservas ' + res.status);
         const reservations = await res.json();
         resSelect.innerHTML = '<option value="">Factura manual (sin reserva)</option>';
         reservations.forEach(r => {
@@ -813,24 +803,66 @@ export default {
         }
       }
 
-      // API BOTES (sin cambios)
+      // API BOTES – con precios
       if (url.pathname.startsWith("/api/boats")) {
         if (request.method === "GET") {
-          const rows = await env.DB.prepare("SELECT id, name, type, capacity, status FROM boats").all();
+          const rows = await env.DB.prepare(`
+            SELECT id, name, type, capacity, status,
+                   price_per_hour, price_per_day, price_per_week,
+                   price_per_month, price_per_year
+            FROM boats
+          `).all();
           return json(rows.results || []);
         }
         if (request.method === "POST") {
           const body = await request.json();
-          await env.DB.prepare("INSERT INTO boats (name, type, capacity, status) VALUES (?,?,?,?)")
-            .bind(body.name, body.type, body.capacity, body.status).run();
+          await env.DB.prepare(`
+            INSERT INTO boats (
+              name, type, capacity, status,
+              price_per_hour, price_per_day, price_per_week,
+              price_per_month, price_per_year
+            ) VALUES (?,?,?,?,?,?,?,?,?,?)
+          `).bind(
+            body.name,
+            body.type,
+            body.capacity,
+            body.status || 'available',
+            body.price_per_hour || 0,
+            body.price_per_day || 0,
+            body.price_per_week || 0,
+            body.price_per_month || 0,
+            body.price_per_year || 0
+          ).run();
           return json({ok:true});
         }
         if (request.method === "PUT") {
           const parts = url.pathname.split("/");
           const id = parts[parts.length-1];
           const body = await request.json();
-          await env.DB.prepare("UPDATE boats SET name=?, type=?, capacity=?, status=? WHERE id=?")
-            .bind(body.name, body.type, body.capacity, body.status, id).run();
+          await env.DB.prepare(`
+            UPDATE boats SET
+              name = ?,
+              type = ?,
+              capacity = ?,
+              status = ?,
+              price_per_hour = ?,
+              price_per_day = ?,
+              price_per_week = ?,
+              price_per_month = ?,
+              price_per_year = ?
+            WHERE id = ?
+          `).bind(
+            body.name,
+            body.type,
+            body.capacity,
+            body.status || 'available',
+            body.price_per_hour || 0,
+            body.price_per_day || 0,
+            body.price_per_week || 0,
+            body.price_per_month || 0,
+            body.price_per_year || 0,
+            id
+          ).run();
           return json({ok:true});
         }
         if (request.method === "DELETE") {
@@ -841,7 +873,7 @@ export default {
         }
       }
 
-      // API RESERVAS – ajustado a tu tabla
+      // API RESERVAS – con nombres
       if (url.pathname.startsWith("/api/reservations")) {
         if (request.method === "GET") {
           const rows = await env.DB.prepare(`
@@ -856,45 +888,16 @@ export default {
         }
         if (request.method === "POST") {
           const body = await request.json();
-          await env.DB.prepare(`
-            INSERT INTO reservations (
-              boat_id, customer_id, start_time, end_time, duration_hours, total_amount, status
-            ) VALUES (?,?,?,?,?,?,?)
-          `).bind(
-            body.boat_id,
-            body.customer_id,
-            body.start_time,
-            body.end_time,
-            body.duration_hours,
-            body.total_amount || 0,
-            body.status || 'pendiente'
-          ).run();
+          await env.DB.prepare("INSERT INTO reservations (boat_id, customer_id, start_time, end_time, duration_hours, total_amount, status) VALUES (?,?,?,?,?,?,?)")
+            .bind(body.boat_id, body.customer_id, body.start_time, body.end_time, body.duration_hours, body.total_amount || 0, body.status || 'pendiente').run();
           return json({ok:true});
         }
         if (request.method === "PUT") {
           const parts = url.pathname.split("/");
           const id = parts[parts.length-1];
           const body = await request.json();
-          await env.DB.prepare(`
-            UPDATE reservations SET
-              boat_id = ?,
-              customer_id = ?,
-              start_time = ?,
-              end_time = ?,
-              duration_hours = ?,
-              total_amount = ?,
-              status = ?
-            WHERE id = ?
-          `).bind(
-            body.boat_id,
-            body.customer_id,
-            body.start_time,
-            body.end_time,
-            body.duration_hours,
-            body.total_amount,
-            body.status || 'active',
-            id
-          ).run();
+          await env.DB.prepare("UPDATE reservations SET boat_id=?, customer_id=?, start_time=?, end_time=?, duration_hours=?, total_amount=?, status=? WHERE id=?")
+            .bind(body.boat_id, body.customer_id, body.start_time, body.end_time, body.duration_hours, body.total_amount, body.status || 'active', id).run();
           return json({ok:true});
         }
         if (request.method === "DELETE") {
