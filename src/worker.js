@@ -1,21 +1,14 @@
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+    const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
 
-    const json = (data, status = 200) => new Response(JSON.stringify(data), {
-      status,
-      headers: { "Content-Type": "application/json" }
-    });
-
-    // =============================================
-    //                FRONTEND - /
-    // =============================================
     if (url.pathname === "/" && request.method === "GET") {
       const html = `<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>BoatERP • Sistema Profesional</title>
+  <title>BoatERP • Sistema Completo</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -31,6 +24,10 @@ export default {
     .content { margin-left:280px; padding:48px 60px; }
     h1 { font-size:2.2rem; margin-bottom:32px; color:#1e2937; }
     .card { background:white; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.07); padding:28px; margin-bottom:32px; }
+    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px; margin-bottom:48px; }
+    .stat-card { background:white; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.07); padding:28px; text-align:center; }
+    .stat-card h4 { margin-bottom:12px; color:var(--gray); font-weight:600; }
+    .stat-card h2 { font-size:2.8rem; color:var(--primary); margin:0; }
     .charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(480px,1fr)); gap:32px; }
     .chart-box { background:white; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.07); padding:28px; height:420px; }
     .full-width { grid-column:1/-1; }
@@ -44,7 +41,7 @@ export default {
     .btn-delete { background:var(--danger); color:white; }
     .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); justify-content:center; align-items:center; z-index:9999; }
     .modal-overlay.active { display:flex; }
-    .modal { background:white; border-radius:16px; width:640px; max-width:94vw; padding:36px; max-height:92vh; overflow-y:auto; }
+    .modal { background:white; border-radius:16px; width:680px; max-width:94vw; padding:36px; max-height:92vh; overflow-y:auto; }
     .toast { position:fixed; bottom:32px; right:32px; padding:16px 28px; border-radius:12px; color:white; opacity:0; transition:0.4s; z-index:99999; font-weight:500; }
     .toast.show { opacity:1; }
     .toast.success { background:var(--success); }
@@ -52,6 +49,7 @@ export default {
     .form-group { margin-bottom:20px; }
     .form-group label { display:block; margin-bottom:8px; font-weight:500; color:#475569; }
     .form-group input, .form-group select { width:100%; padding:12px 16px; border:1px solid #cbd5e1; border-radius:8px; font-size:1rem; }
+    .price-info { font-size:1.3rem; font-weight:600; color:var(--primary); margin:16px 0; }
   </style>
 </head>
 <body>
@@ -83,7 +81,7 @@ function showToast(msg, type = "success") {
   const t = document.getElementById("toast");
   t.textContent = msg;
   t.className = "toast " + type + " show";
-  setTimeout(() => { t.className = "toast"; }, 4000);
+  setTimeout(() => t.className = "toast", 4000);
 }
 
 async function api(method, path, body = null) {
@@ -111,14 +109,15 @@ async function loadView(view) {
   else if (view === "invoices") await loadInvoices(content);
 }
 
+// Dashboard con gráficos reales
 async function loadDashboard(content) {
   content.innerHTML = \`
     <h1>Dashboard</h1>
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;margin-bottom:48px;">
-      <div class="card"><h4>Ingresos Hoy</h4><h2 id="inc">$0</h2></div>
-      <div class="card"><h4>Reservas Activas</h4><h2 id="act">0</h2></div>
-      <div class="card"><h4>Botes Disponibles</h4><h2 id="boats">0</h2></div>
-      <div class="card"><h4>Clientes Totales</h4><h2 id="cust">0</h2></div>
+    <div class="stats-grid">
+      <div class="stat-card"><h4>Ingresos Hoy</h4><h2 id="inc">$0</h2></div>
+      <div class="stat-card"><h4>Reservas Activas</h4><h2 id="act">0</h2></div>
+      <div class="stat-card"><h4>Botes Disponibles</h4><h2 id="boats">0</h2></div>
+      <div class="stat-card"><h4>Clientes Totales</h4><h2 id="cust">0</h2></div>
     </div>
     <div class="charts-grid">
       <div class="chart-box"><h3>Ingresos Mensuales (Barras)</h3><canvas id="barChart"></canvas></div>
@@ -128,88 +127,347 @@ async function loadDashboard(content) {
   \`;
 
   try {
-    const [counts, bar, line, pie] = await Promise.all([
+    const [counts, income, resMonthly, status] = await Promise.all([
       api("GET", "/api/dashboard"),
       api("GET", "/api/income-monthly"),
       api("GET", "/api/reservations-monthly"),
       api("GET", "/api/reservations-status")
     ]);
 
-    // Conteos superiores
     document.getElementById("inc").textContent = "$" + Number(counts.income_today||0).toLocaleString();
     document.getElementById("act").textContent = counts.active_reservations;
     document.getElementById("boats").textContent = counts.available_boats;
     document.getElementById("cust").textContent = counts.total_customers;
 
-    // Gráfico de barras - Ingresos mensuales
+    // Gráficos reales
     charts.bar = new Chart(document.getElementById('barChart'), {
       type: 'bar',
-      data: {
-        labels: bar.map(item => item.month),
-        datasets: [{
-          label: 'Ingresos (RD$)',
-          data: bar.map(item => item.total),
-          backgroundColor: '#3b82f6',
-          borderRadius: 6
-        }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      data: { labels: income.map(r => r.month), datasets: [{ label: 'Ingresos RD$', data: income.map(r => Number(r.total)), backgroundColor: '#3b82f6' }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
     });
 
-    // Gráfico de línea - Reservas por mes
     charts.line = new Chart(document.getElementById('lineChart'), {
       type: 'line',
-      data: {
-        labels: line.map(item => item.month),
-        datasets: [{
-          label: 'Reservas',
-          data: line.map(item => item.count),
-          borderColor: '#10b981',
-          tension: 0.4,
-          fill: false,
-          pointBackgroundColor: '#10b981',
-          pointRadius: 5
-        }]
-      },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      data: { labels: resMonthly.map(r => r.month), datasets: [{ label: 'Reservas', data: resMonthly.map(r => Number(r.count)), borderColor: '#10b981', tension: 0.4, fill: true }] },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
     });
 
-    // Gráfico de pie - Estados de reservas
     charts.pie = new Chart(document.getElementById('pieChart'), {
       type: 'pie',
-      data: {
-        labels: pie.map(item => item.status),
-        datasets: [{
-          data: pie.map(item => item.count),
-          backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ef4444'],
-          borderWidth: 0
-        }]
-      },
+      data: { labels: status.map(r => r.status), datasets: [{ data: status.map(r => Number(r.count)), backgroundColor: ['#10b981','#f59e0b','#3b82f6','#8b5cf6','#ef4444'] }] },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
     });
-  } catch(e) {
-    showToast("Error al cargar dashboard o gráficos", "error");
-    console.error(e);
-  }
+  } catch(e) { showToast("Error cargando dashboard", "error"); }
 }
 
-// (El resto de funciones loadCustomers, loadBoats, loadReservations, loadInvoices, openCustomerModal, saveCustomer, deleteItem, etc.
-// permanecen iguales a la versión anterior que ya te di)
-
+// Clientes - Lista
 async function loadCustomers(content) {
-  // ... (copia la función completa de tu versión anterior)
+  content.innerHTML = \`
+    <h1>Clientes</h1>
+    <button class="btn btn-success" style="margin-bottom:24px;" onclick="openCustomerModal()">+ Nuevo Cliente</button>
+    <div class="card table-container">
+      <table class="data-table" id="custTable">
+        <thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Acciones</th></tr></thead>
+        <tbody id="custBody"></tbody>
+      </table>
+    </div>
+  \`;
+
+  try {
+    const data = await api("GET", "/api/customers");
+    const tbody = document.getElementById("custBody");
+    tbody.innerHTML = data.length ? "" : '<tr><td colspan="5" style="text-align:center;padding:40px;">No hay clientes</td></tr>';
+    data.forEach(c => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = \`
+        <td>\${c.full_name || '-'}</td>
+        <td>\${c.document_id || '-'}</td>
+        <td>\${c.phone || '-'}</td>
+        <td>\${c.email || '-'}</td>
+        <td>
+          <button class="btn btn-edit" onclick="openCustomerModal(\${c.id})">Editar</button>
+          <button class="btn btn-delete" onclick="deleteItem('customers', \${c.id})">Eliminar</button>
+        </td>
+      \`;
+      tbody.appendChild(tr);
+    });
+  } catch(e) { showToast("Error cargando clientes", "error"); }
 }
 
+// Modal Cliente
+async function openCustomerModal(id = null) {
+  let title = id ? 'Editar Cliente' : 'Nuevo Cliente';
+  let data = { full_name: '', document_id: '', phone: '', email: '' };
+  if (id) data = await api("GET", "/api/customers/" + id).catch(() => data);
+
+  document.getElementById("modalContent").innerHTML = \`
+    <h2>\${title}</h2>
+    <div class="form-group"><label>Nombre completo</label><input id="c_name" value="\${data.full_name}"></div>
+    <div class="form-group"><label>Documento</label><input id="c_doc" value="\${data.document_id}"></div>
+    <div class="form-group"><label>Teléfono</label><input id="c_phone" value="\${data.phone}"></div>
+    <div class="form-group"><label>Email</label><input id="c_email" value="\${data.email}"></div>
+    <div style="margin-top:28px;text-align:right;">
+      <button class="btn btn-success" onclick="saveCustomer(\${id||''})">Guardar</button>
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+    </div>
+  \`;
+  document.getElementById("modal").classList.add("active");
+}
+
+async function saveCustomer(id) {
+  const body = {
+    full_name: document.getElementById("c_name").value.trim(),
+    document_id: document.getElementById("c_doc").value.trim(),
+    phone: document.getElementById("c_phone").value.trim(),
+    email: document.getElementById("c_email").value.trim()
+  };
+  if (!body.full_name) return showToast("Nombre es obligatorio", "error");
+
+  try {
+    if (id) await api("PUT", "/api/customers/" + id, body);
+    else await api("POST", "/api/customers", body);
+    showToast("Cliente guardado", "success");
+    closeModal();
+    loadView("customers");
+  } catch(e) { showToast("Error al guardar", "error"); }
+}
+
+// Botes - Lista + Modal
 async function loadBoats(content) {
-  // ... (implementa similar a loadCustomers)
+  content.innerHTML = \`
+    <h1>Botes</h1>
+    <button class="btn btn-success" style="margin-bottom:24px;" onclick="openBoatModal()">+ Nuevo Bote</button>
+    <div class="card table-container">
+      <table class="data-table" id="boatTable">
+        <thead><tr><th>Nombre</th><th>Tipo</th><th>Capacidad</th><th>Precio/h</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="boatBody"></tbody>
+      </table>
+    </div>
+  \`;
+
+  try {
+    const data = await api("GET", "/api/boats");
+    const tbody = document.getElementById("boatBody");
+    tbody.innerHTML = data.length ? "" : '<tr><td colspan="6" style="text-align:center;padding:40px;">No hay botes</td></tr>';
+    data.forEach(b => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = \`
+        <td>\${b.name}</td>
+        <td>\${b.type || '-'}</td>
+        <td>\${b.capacity || '-'}</td>
+        <td>RD$ \${Number(b.price_per_hour||0).toFixed(2)}</td>
+        <td>\${b.status}</td>
+        <td>
+          <button class="btn btn-edit" onclick="openBoatModal(\${b.id})">Editar</button>
+          <button class="btn btn-delete" onclick="deleteItem('boats',\${b.id})">Eliminar</button>
+        </td>
+      \`;
+      tbody.appendChild(tr);
+    });
+  } catch(e) { showToast("Error cargando botes", "error"); }
 }
 
+async function openBoatModal(id = null) {
+  let title = id ? 'Editar Bote' : 'Nuevo Bote';
+  let data = { name: '', type: '', capacity: '', status: 'available', price_per_hour: '' };
+  if (id) data = await api("GET", "/api/boats/" + id).catch(() => data);
+
+  document.getElementById("modalContent").innerHTML = \`
+    <h2>\${title}</h2>
+    <div class="form-group"><label>Nombre del bote</label><input id="b_name" value="\${data.name}"></div>
+    <div class="form-group"><label>Tipo (Lancha, Yate...)</label><input id="b_type" value="\${data.type}"></div>
+    <div class="form-group"><label>Capacidad (personas)</label><input id="b_capacity" type="number" value="\${data.capacity}"></div>
+    <div class="form-group"><label>Estado</label>
+      <select id="b_status">
+        <option value="available" \${data.status==='available'?'selected':''}>Disponible</option>
+        <option value="rented" \${data.status==='rented'?'selected':''}>Alquilado</option>
+        <option value="maintenance" \${data.status==='maintenance'?'selected':''}>Mantenimiento</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Precio por hora (RD$)</label><input id="b_price" type="number" step="0.01" value="\${data.price_per_hour}"></div>
+    <div style="margin-top:28px;text-align:right;">
+      <button class="btn btn-success" onclick="saveBoat(\${id||''})">Guardar</button>
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+    </div>
+  \`;
+  document.getElementById("modal").classList.add("active");
+}
+
+async function saveBoat(id) {
+  const body = {
+    name: document.getElementById("b_name").value.trim(),
+    type: document.getElementById("b_type").value.trim(),
+    capacity: parseInt(document.getElementById("b_capacity").value) || 0,
+    status: document.getElementById("b_status").value,
+    price_per_hour: parseFloat(document.getElementById("b_price").value) || 0
+  };
+  if (!body.name) return showToast("Nombre del bote es obligatorio", "error");
+
+  try {
+    if (id) await api("PUT", "/api/boats/" + id, body);
+    else await api("POST", "/api/boats", body);
+    showToast("Bote guardado", "success");
+    closeModal();
+    loadView("boats");
+  } catch(e) { showToast("Error al guardar bote", "error"); }
+}
+
+// Reservas - con cálculo de precio
 async function loadReservations(content) {
-  // ... (implementa similar a loadCustomers)
+  content.innerHTML = \`
+    <h1>Reservas</h1>
+    <button class="btn btn-success" style="margin-bottom:24px;" onclick="openReservationModal()">+ Nueva Reserva</button>
+    <div class="card table-container">
+      <table class="data-table" id="resTable">
+        <thead><tr><th>ID</th><th>Cliente</th><th>Bote</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="resBody"></tbody>
+      </table>
+    </div>
+  \`;
+
+  try {
+    const data = await api("GET", "/api/reservations?full=true");
+    const tbody = document.getElementById("resBody");
+    tbody.innerHTML = data.length ? "" : '<tr><td colspan="7" style="text-align:center;padding:40px;">No hay reservas</td></tr>';
+    data.forEach(r => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = \`
+        <td>#\${r.id}</td>
+        <td>\${r.customer_name || '-'}</td>
+        <td>\${r.boat_name || '-'}</td>
+        <td>\${new Date(r.start_time).toLocaleString('es-DO')}</td>
+        <td>\${new Date(r.end_time).toLocaleString('es-DO')}</td>
+        <td>\${r.status}</td>
+        <td>
+          <button class="btn btn-edit" onclick="openReservationModal(\${r.id})">Editar</button>
+          <button class="btn btn-delete" onclick="deleteItem('reservations',\${r.id})">Eliminar</button>
+        </td>
+      \`;
+      tbody.appendChild(tr);
+    });
+  } catch(e) { showToast("Error cargando reservas", "error"); }
 }
 
+async function openReservationModal(id = null) {
+  let title = id ? 'Editar Reserva' : 'Nueva Reserva';
+  let data = { customer_id: '', boat_id: '', start_time: '', end_time: '' };
+
+  if (id) data = await api("GET", "/api/reservations/" + id).catch(() => data);
+
+  document.getElementById("modalContent").innerHTML = \`
+    <h2>\${title}</h2>
+    <div class="form-group"><label>Cliente</label><select id="r_customer"></select></div>
+    <div class="form-group"><label>Bote</label><select id="r_boat" onchange="calcReservationPrice()"></select></div>
+    <div class="form-group"><label>Inicio</label><input type="datetime-local" id="r_start" onchange="calcReservationPrice()" value="\${data.start_time ? data.start_time.slice(0,16) : ''}"></div>
+    <div class="form-group"><label>Fin</label><input type="datetime-local" id="r_end" onchange="calcReservationPrice()" value="\${data.end_time ? data.end_time.slice(0,16) : ''}"></div>
+    <div class="form-group"><label>Duración estimada</label><div id="r_duration" class="price-info">0 horas</div></div>
+    <div class="form-group"><label>Precio estimado</label><div id="r_total" class="price-info">RD$ 0.00</div></div>
+    <div style="margin-top:28px;text-align:right;">
+      <button class="btn btn-success" onclick="saveReservation(\${id||''})">Guardar</button>
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+    </div>
+  \`;
+
+  // Cargar clientes y botes
+  const customers = await api("GET", "/api/customers");
+  const boats = await api("GET", "/api/boats");
+  const custSel = document.getElementById("r_customer");
+  const boatSel = document.getElementById("r_boat");
+  custSel.innerHTML = '<option value="">Seleccionar cliente...</option>';
+  boatSel.innerHTML = '<option value="">Seleccionar bote...</option>';
+  customers.forEach(c => {
+    const opt = document.createElement("option");
+    opt.value = c.id;
+    opt.textContent = c.full_name;
+    if (c.id == data.customer_id) opt.selected = true;
+    custSel.appendChild(opt);
+  });
+  boats.forEach(b => {
+    const opt = document.createElement("option");
+    opt.value = b.id;
+    opt.textContent = b.name + " - RD$" + Number(b.price_per_hour||0).toFixed(0) + "/h";
+    opt.dataset.price = b.price_per_hour || 0;
+    if (b.id == data.boat_id) opt.selected = true;
+    boatSel.appendChild(opt);
+  });
+
+  document.getElementById("modal").classList.add("active");
+  calcReservationPrice();
+}
+
+function calcReservationPrice() {
+  const start = document.getElementById("r_start")?.value;
+  const end = document.getElementById("r_end")?.value;
+  const boat = document.getElementById("r_boat")?.selectedOptions[0];
+
+  if (!start || !end || !boat?.value) {
+    document.getElementById("r_duration").textContent = "0 horas";
+    document.getElementById("r_total").textContent = "RD$ 0.00";
+    return;
+  }
+
+  const ms = new Date(end) - new Date(start);
+  if (ms <= 0) return showToast("Fecha final debe ser posterior", "error");
+
+  const hours = (ms / 3600000).toFixed(1);
+  const price = Number(boat.dataset.price || 0);
+  const total = (hours * price).toFixed(2);
+
+  document.getElementById("r_duration").textContent = hours + " horas";
+  document.getElementById("r_total").textContent = "RD$ " + total;
+}
+
+async function saveReservation(id) {
+  const body = {
+    customer_id: parseInt(document.getElementById("r_customer").value),
+    boat_id: parseInt(document.getElementById("r_boat").value),
+    start_time: document.getElementById("r_start").value + ":00",
+    end_time: document.getElementById("r_end").value + ":00"
+  };
+
+  if (!body.customer_id || !body.boat_id || !body.start_time || !body.end_time) {
+    return showToast("Complete todos los campos", "error");
+  }
+
+  try {
+    if (id) await api("PUT", "/api/reservations/" + id, body);
+    else await api("POST", "/api/reservations", body);
+    showToast("Reserva guardada", "success");
+    closeModal();
+    loadView("reservations");
+  } catch(e) { showToast("Error al guardar reserva", "error"); }
+}
+
+// Facturación (básica - puedes expandir)
 async function loadInvoices(content) {
-  // ... (implementa similar a loadCustomers)
+  content.innerHTML = \`
+    <h1>Facturación</h1>
+    <button class="btn btn-success" style="margin-bottom:24px;" onclick="alert('Próximamente: Crear factura desde reserva')">+ Nueva Factura</button>
+    <div class="card table-container">
+      <table class="data-table" id="invTable">
+        <thead><tr><th>ID</th><th>Reserva</th><th>Total</th><th>Método</th><th>Fecha</th><th>Acciones</th></tr></thead>
+        <tbody id="invBody"></tbody>
+      </table>
+    </div>
+  \`;
+
+  try {
+    const data = await api("GET", "/api/invoices");
+    const tbody = document.getElementById("invBody");
+    tbody.innerHTML = data.length ? "" : '<tr><td colspan="6" style="text-align:center;padding:40px;">No hay facturas</td></tr>';
+    data.forEach(i => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = \`
+        <td>#\${i.id}</td>
+        <td>#\${i.reservation_id || '-'}</td>
+        <td>RD$ \${Number(i.total||0).toFixed(2)}</td>
+        <td>\${i.payment_method || '-'}</td>
+        <td>\${i.created_at ? new Date(i.created_at).toLocaleDateString('es-DO') : '-'}</td>
+        <td><button class="btn btn-delete" onclick="deleteItem('invoices',\${i.id})">Eliminar</button></td>
+      \`;
+      tbody.appendChild(tr);
+    });
+  } catch(e) { showToast("Error cargando facturas", "error"); }
 }
 
 function closeModal() {
@@ -217,14 +475,12 @@ function closeModal() {
 }
 
 async function deleteItem(table, id) {
-  if (!confirm("¿Eliminar este registro? Esta acción no se puede deshacer.")) return;
+  if (!confirm("¿Eliminar este registro?")) return;
   try {
     await api("DELETE", "/api/" + table + "/" + id);
-    showToast("Registro eliminado", "success");
+    showToast("Eliminado correctamente", "success");
     loadView(table);
-  } catch(e) {
-    showToast("No se pudo eliminar", "error");
-  }
+  } catch(e) { showToast("Error al eliminar", "error"); }
 }
 
 // Inicio
@@ -236,97 +492,71 @@ loadView("dashboard");
       return new Response(html, { headers: { "Content-Type": "text/html;charset=UTF-8" } });
     }
 
-    // =============================================
-    //                  API - DASHBOARD
-    // =============================================
+    // ────────────────────────────────────────────────
+    //                  API ENDPOINTS
+    // ────────────────────────────────────────────────
+
+    // Dashboard conteos
     if (url.pathname === "/api/dashboard") {
-      let income_today = 0;
-      let active_reservations = 0;
-      let available_boats = 0;
-      let total_customers = 0;
-
-      try { income_today = (await env.DB.prepare("SELECT COALESCE(SUM(total),0) as s FROM invoices WHERE DATE(created_at)=DATE('now')").first())?.s ?? 0; } catch {}
-      try { active_reservations = (await env.DB.prepare("SELECT COUNT(*) as c FROM reservations WHERE status IN ('confirmada','activa')").first())?.c ?? 0; } catch {}
-      try { available_boats = (await env.DB.prepare("SELECT COUNT(*) as c FROM boats WHERE status='available'").first())?.c ?? 0; } catch {}
-      try { total_customers = (await env.DB.prepare("SELECT COUNT(*) as c FROM customers").first())?.c ?? 0; } catch {}
-
-      return json({ income_today, active_reservations, available_boats, total_customers });
+      let income_today = 0, active = 0, boats = 0, customers = 0;
+      try { income_today = (await env.DB.prepare("SELECT COALESCE(SUM(total),0) s FROM invoices WHERE DATE(created_at)=DATE('now')").first())?.s ?? 0; } catch {}
+      try { active = (await env.DB.prepare("SELECT COUNT(*) c FROM reservations WHERE status IN ('confirmada','activa')").first())?.c ?? 0; } catch {}
+      try { boats = (await env.DB.prepare("SELECT COUNT(*) c FROM boats WHERE status='available'").first())?.c ?? 0; } catch {}
+      try { customers = (await env.DB.prepare("SELECT COUNT(*) c FROM customers").first())?.c ?? 0; } catch {}
+      return json({ income_today, active_reservations: active, available_boats: boats, total_customers: customers });
     }
 
-    // =============================================
-    //      API - GRÁFICOS REALES (nuevos endpoints)
-    // =============================================
-
-    // Ingresos mensuales (últimos 6 meses) - para gráfico de barras
+    // Ingresos mensuales reales
     if (url.pathname === "/api/income-monthly") {
-      const result = await env.DB.prepare(`
-        SELECT 
-          strftime('%Y-%m', created_at) as month,
-          COALESCE(SUM(total), 0) as total
-        FROM invoices
-        WHERE created_at >= date('now', '-6 months')
-        GROUP BY month
-        ORDER BY month ASC
+      const r = await env.DB.prepare(`
+        SELECT strftime('%Y-%m', created_at) month, COALESCE(SUM(total),0) total
+        FROM invoices WHERE created_at >= date('now','-6 months')
+        GROUP BY month ORDER BY month
       `).all();
-      return json(result.results || []);
+      return json(r.results || []);
     }
 
-    // Reservas por mes (últimos 6 meses) - para gráfico de línea
+    // Reservas mensuales reales
     if (url.pathname === "/api/reservations-monthly") {
-      const result = await env.DB.prepare(`
-        SELECT 
-          strftime('%Y-%m', start_time) as month,
-          COUNT(*) as count
-        FROM reservations
-        WHERE start_time >= date('now', '-6 months')
-        GROUP BY month
-        ORDER BY month ASC
+      const r = await env.DB.prepare(`
+        SELECT strftime('%Y-%m', start_time) month, COUNT(*) count
+        FROM reservations WHERE start_time >= date('now','-6 months')
+        GROUP BY month ORDER BY month
       `).all();
-      return json(result.results || []);
+      return json(r.results || []);
     }
 
-    // Distribución de estados de reservas - para gráfico de pie
+    // Distribución estados reservas
     if (url.pathname === "/api/reservations-status") {
-      const result = await env.DB.prepare(`
-        SELECT 
-          status,
-          COUNT(*) as count
-        FROM reservations
-        GROUP BY status
-        ORDER BY count DESC
-      `).all();
-      return json(result.results || []);
+      const r = await env.DB.prepare("SELECT status, COUNT(*) count FROM reservations GROUP BY status").all();
+      return json(r.results || []);
     }
 
-    // =============================================
-    //                  API CLIENTES (ya funcional)
-    // =============================================
+    // Clientes - CRUD completo
     if (url.pathname.startsWith("/api/customers")) {
       const parts = url.pathname.split("/");
-      const isSingle = parts.length > 3 && !isNaN(parts[3]);
-      const id = isSingle ? parts[3] : null;
+      const id = parts.length > 3 && !isNaN(parts[3]) ? parts[3] : null;
 
       if (request.method === "GET") {
         if (id) {
-          const row = await env.DB.prepare("SELECT * FROM customers WHERE id = ?").bind(id).first();
+          const row = await env.DB.prepare("SELECT * FROM customers WHERE id=?").bind(id).first();
           return json(row || {});
-        } else {
-          const { results } = await env.DB.prepare("SELECT * FROM customers ORDER BY full_name").all();
-          return json(results || []);
         }
+        const { results } = await env.DB.prepare("SELECT * FROM customers ORDER BY full_name").all();
+        return json(results || []);
       }
 
       if (request.method === "POST") {
-        const body = await request.json();
-        await env.DB.prepare("INSERT INTO customers (full_name, document_id, phone, email) VALUES (?,?,?,?)")
-          .bind(body.full_name, body.document_id, body.phone, body.email).run();
+        const b = await request.json();
+        await env.DB.prepare("INSERT INTO customers (full_name,document_id,phone,email) VALUES (?,?,?,?)")
+          .bind(b.full_name, b.document_id, b.phone, b.email).run();
         return json({ success: true });
       }
 
       if (request.method === "PUT" && id) {
-        const body = await request.json();
-        await env.DB.prepare("UPDATE customers SET full_name=?, document_id=?, phone=?, email=? WHERE id=?")
-          .bind(body.full_name, body.document_id, body.phone, body.email, id).run();
+        const b = await request.json();
+        await env.DB.prepare("UPDATE customers SET full_name=?,document_id=?,phone=?,email=? WHERE id=?")
+          .bind(b.full_name, b.document_id, b.phone, b.email, id).run();
         return json({ success: true });
       }
 
@@ -336,10 +566,88 @@ loadView("dashboard");
       }
     }
 
-    // =============================================
-    //       Rutas para boats, reservations, invoices
-    //       (implementa de forma similar cuando las necesites)
-    // =============================================
+    // Botes - CRUD completo
+    if (url.pathname.startsWith("/api/boats")) {
+      const parts = url.pathname.split("/");
+      const id = parts.length > 3 && !isNaN(parts[3]) ? parts[3] : null;
+
+      if (request.method === "GET") {
+        if (id) {
+          const row = await env.DB.prepare("SELECT * FROM boats WHERE id=?").bind(id).first();
+          return json(row || {});
+        }
+        const { results } = await env.DB.prepare("SELECT * FROM boats").all();
+        return json(results || []);
+      }
+
+      if (request.method === "POST") {
+        const b = await request.json();
+        await env.DB.prepare("INSERT INTO boats (name,type,capacity,status,price_per_hour) VALUES (?,?,?,?,?)")
+          .bind(b.name, b.type, b.capacity, b.status, b.price_per_hour).run();
+        return json({ success: true });
+      }
+
+      if (request.method === "PUT" && id) {
+        const b = await request.json();
+        await env.DB.prepare("UPDATE boats SET name=?,type=?,capacity=?,status=?,price_per_hour=? WHERE id=?")
+          .bind(b.name, b.type, b.capacity, b.status, b.price_per_hour, id).run();
+        return json({ success: true });
+      }
+
+      if (request.method === "DELETE" && id) {
+        await env.DB.prepare("DELETE FROM boats WHERE id=?").bind(id).run();
+        return json({ success: true });
+      }
+    }
+
+    // Reservas - CRUD + full view
+    if (url.pathname.startsWith("/api/reservations")) {
+      const parts = url.pathname.split("/");
+      const id = parts.length > 3 && !isNaN(parts[3]) ? parts[3] : null;
+
+      if (request.method === "GET") {
+        if (url.searchParams.get("full") === "true") {
+          const { results } = await env.DB.prepare(`
+            SELECT r.*, c.full_name AS customer_name, b.name AS boat_name, b.price_per_hour
+            FROM reservations r
+            LEFT JOIN customers c ON r.customer_id = c.id
+            LEFT JOIN boats b ON r.boat_id = b.id
+            ORDER BY r.id DESC
+          `).all();
+          return json(results || []);
+        }
+        const { results } = await env.DB.prepare("SELECT * FROM reservations").all();
+        return json(results || []);
+      }
+
+      if (request.method === "POST") {
+        const b = await request.json();
+        await env.DB.prepare("INSERT INTO reservations (customer_id,boat_id,start_time,end_time,status) VALUES (?,?,?,?, 'pendiente')")
+          .bind(b.customer_id, b.boat_id, b.start_time, b.end_time).run();
+        return json({ success: true });
+      }
+
+      if (request.method === "PUT" && id) {
+        const b = await request.json();
+        await env.DB.prepare("UPDATE reservations SET customer_id=?,boat_id=?,start_time=?,end_time=? WHERE id=?")
+          .bind(b.customer_id, b.boat_id, b.start_time, b.end_time, id).run();
+        return json({ success: true });
+      }
+
+      if (request.method === "DELETE" && id) {
+        await env.DB.prepare("DELETE FROM reservations WHERE id=?").bind(id).run();
+        return json({ success: true });
+      }
+    }
+
+    // Facturas - básico (puedes expandir)
+    if (url.pathname.startsWith("/api/invoices")) {
+      if (request.method === "GET") {
+        const { results } = await env.DB.prepare("SELECT * FROM invoices ORDER BY created_at DESC").all();
+        return json(results || []);
+      }
+      // POST para crear factura desde reserva (implementar cuando lo necesites)
+    }
 
     return json({ error: "Not Found" }, 404);
   }
