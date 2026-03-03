@@ -188,7 +188,7 @@ async function loadDashboard(content) {
           label: 'Ingresos Mensuales (RD$)',
           data: incomeMonthly.map(r => Number(r.total || 0)),
           backgroundColor: vibrantColors.slice(0, incomeMonthly.length),
-          borderRadius: 8,
+          borderRadius: 5,
           borderSkipped: false
         }]
       },
@@ -803,3 +803,4 @@ loadView("dashboard");
     return json({ error: "Not Found" }, 404);
   }
 };
+
