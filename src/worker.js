@@ -766,67 +766,282 @@ export default {
         }
       }
 
-      // API RESERVAS (mejorada con joins)
-      if (url.pathname.startsWith("/api/reservations")) {
-        if (request.method === "GET") {
-          const rows = await env.DB.prepare(`
-            SELECT 
-              r.id, r.customer_id, r.inventory_id, r.start_time, r.end_time, r.status,
-              c.full_name AS customer_name,
-              b.name AS boat_name
-            FROM reservations r
-            LEFT JOIN customers c ON r.customer_id = c.id
-            LEFT JOIN boats b ON r.inventory_id = b.id
-          `).all();
-          return json(rows.results || []);
-        }
-        if (request.method === "POST") {
-          const body = await request.json();
-          await env.DB.prepare("INSERT INTO reservations (customer_id, inventory_id, start_time, end_time, status) VALUES (?,?,?,?, 'pendiente')")
-            .bind(body.customer_id, body.inventory_id, body.start_time, body.end_time).run();
-          return json({ok:true});
-        }
-        if (request.method === "PUT") {
-          const id = url.pathname.split("/").pop();
-          const body = await request.json();
-          await env.DB.prepare("UPDATE reservations SET customer_id=?, inventory_id=?, start_time=?, end_time=?, status=? WHERE id=?")
-            .bind(body.customer_id, body.inventory_id, body.start_time, body.end_time, body.status, id).run();
-          return json({ok:true});
-        }
-        if (request.method === "DELETE") {
-          const id = url.pathname.split("/").pop();
-          await env.DB.prepare("DELETE FROM reservations WHERE id=?").bind(id).run();
-          return json({ok:true});
-        }
+      // API RESERVAS - Versión profesional y segura
+if (url.pathname.startsWith("/api/reservations")) {
+  const pathParts = url.pathname.split('/');
+  const id = pathParts.length > 2 ? pathParts[2] : null;
+
+  if (request.method === "GET") {
+    try {
+      const rows = await env.DB.prepare(`
+        SELECT 
+          r.id,
+          r.reservation_number,
+          r.customer_id,
+          r.boat_id,
+          r.start_time,
+          r.end_time,
+          r.duration_hours,
+          r.total_amount,
+          r.status,
+          r.created_at,
+          c.full_name AS customer_name,
+          b.name AS boat_name,
+          b.price_per_hour
+        FROM reservations r
+        LEFT JOIN customers c ON r.customer_id = c.id
+        LEFT JOIN boats b ON r.boat_id = b.id
+        ORDER BY r.created_at DESC
+      `).all();
+
+      return json({
+        success: true,
+        data: rows.results || []
+      });
+    } catch (e) {
+      return json({ success: false, error: "Error al obtener reservas: " + e.message }, 500);
+    }
+  }
+
+  if (request.method === "POST") {
+    try {
+      const body = await request.json();
+
+      // Validación básica
+      if (!body.customer_id || !body.boat_id || !body.start_time || !body.end_time) {
+        return json({ success: false, error: "Faltan campos requeridos: customer_id, boat_id, start_time, end_time" }, 400);
       }
 
-      // API FACTURAS (mejorada)
-      if (url.pathname.startsWith("/api/invoices")) {
-        if (request.method === "GET") {
-          const rows = await env.DB.prepare("SELECT id, reservation_id, subtotal, itbis, total, payment_method FROM invoices").all();
-          return json(rows.results || []);
-        }
-        if (request.method === "POST") {
-          const body = await request.json();
-          await env.DB.prepare("INSERT INTO invoices (reservation_id, subtotal, itbis, total, payment_method) VALUES (?,?,?,?,?)")
-            .bind(body.reservation_id, body.subtotal, body.itbis, body.total, body.payment_method).run();
-          return json({ok:true});
-        }
-        if (request.method === "PUT") {
-          const id = url.pathname.split("/").pop();
-          const body = await request.json();
-          await env.DB.prepare("UPDATE invoices SET reservation_id=?, subtotal=?, itbis=?, total=?, payment_method=? WHERE id=?")
-            .bind(body.reservation_id, body.subtotal, body.itbis, body.total, body.payment_method, id).run();
-          return json({ok:true});
-        }
-        if (request.method === "DELETE") {
-          const id = url.pathname.split("/").pop();
-          await env.DB.prepare("DELETE FROM invoices WHERE id=?").bind(id).run();
-          return json({ok:true});
-        }
+      const start = new Date(body.start_time);
+      const end = new Date(body.end_time);
+      if (isNaN(start) || isNaN(end) || end <= start) {
+        return json({ success: false, error: "Fechas inválidas o fin anterior al inicio" }, 400);
       }
 
-      return json({error:"Not Found"},404);
+      const duration = (end - start) / (1000 * 60 * 60); // horas
+
+      // Obtener precio por hora del bote
+      const boat = await env.DB.prepare("SELECT price_per_hour FROM boats WHERE id = ?")
+        .bind(body.boat_id)
+        .first();
+
+      const priceHour = boat?.price_per_hour || 0;
+      const totalAmount = duration * priceHour;
+
+      const stmt = await env.DB.prepare(`
+        INSERT INTO reservations (
+          customer_id, 
+          boat_id, 
+          start_time, 
+          end_time, 
+          duration_hours,
+          total_amount,
+          status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        RETURNING id, reservation_number
+      `);
+
+      const result = await stmt.bind(
+        body.customer_id,
+        body.boat_id,
+        body.start_time,
+        body.end_time,
+        duration,
+        totalAmount,
+        'pendiente'
+      ).first();
+
+      return json({
+        success: true,
+        message: "Reserva creada correctamente",
+        data: {
+          id: result.id,
+          reservation_number: result.reservation_number
+        }
+      }, 201);
+    } catch (e) {
+      return json({ success: false, error: "Error al crear reserva: " + e.message }, 500);
+    }
+  }
+
+  if (request.method === "PUT" && id) {
+    try {
+      const body = await request.json();
+
+      const exists = await env.DB.prepare("SELECT 1 FROM reservations WHERE id = ?").bind(id).first();
+      if (!exists) return json({ success: false, error: "Reserva no encontrada" }, 404);
+
+      await env.DB.prepare(`
+        UPDATE reservations SET
+          customer_id = ?,
+          boat_id = ?,
+          start_time = ?,
+          end_time = ?,
+          status = ?,
+          updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(
+        body.customer_id,
+        body.boat_id,
+        body.start_time,
+        body.end_time,
+        body.status || 'pendiente',
+        id
+      ).run();
+
+      return json({ success: true, message: "Reserva actualizada" });
+    } catch (e) {
+      return json({ success: false, error: "Error al actualizar: " + e.message }, 500);
+    }
+  }
+
+  if (request.method === "DELETE" && id) {
+    try {
+      const exists = await env.DB.prepare("SELECT 1 FROM reservations WHERE id = ?").bind(id).first();
+      if (!exists) return json({ success: false, error: "Reserva no encontrada" }, 404);
+
+      await env.DB.prepare("DELETE FROM reservations WHERE id = ?").bind(id).run();
+      return json({ success: true, message: "Reserva eliminada" });
+    } catch (e) {
+      return json({ success: false, error: "Error al eliminar: " + e.message }, 500);
+    }
+  }
+
+  return json({ success: false, error: "Método no permitido" }, 405);
+}
+
+      // API FACTURAS - Versión profesional y segura
+if (url.pathname.startsWith("/api/invoices")) {
+  const pathParts = url.pathname.split('/');
+  const id = pathParts.length > 2 ? pathParts[2] : null;
+
+  if (request.method === "GET") {
+    try {
+      const rows = await env.DB.prepare(`
+        SELECT 
+          i.id,
+          i.invoice_number,
+          i.reservation_id,
+          i.subtotal,
+          i.itbis,
+          i.total,
+          i.payment_method,
+          i.payment_status,
+          i.created_at,
+          i.notes,
+          r.reservation_number,
+          c.full_name AS customer_name,
+          b.name AS boat_name
+        FROM invoices i
+        LEFT JOIN reservations r ON i.reservation_id = r.id
+        LEFT JOIN customers c ON r.customer_id = c.id
+        LEFT JOIN boats b ON r.boat_id = b.id
+        ORDER BY i.created_at DESC
+      `).all();
+
+      return json({
+        success: true,
+        data: rows.results || []
+      });
+    } catch (e) {
+      return json({ success: false, error: "Error al obtener facturas: " + e.message }, 500);
+    }
+  }
+
+  if (request.method === "POST") {
+    try {
+      const body = await request.json();
+
+      // Validación mínima
+      if (!body.reservation_id) {
+        return json({ success: false, error: "reservation_id es obligatorio" }, 400);
+      }
+      if (body.subtotal == null || body.itbis == null || body.total == null) {
+        return json({ success: false, error: "subtotal, itbis y total son obligatorios" }, 400);
+      }
+
+      const stmt = await env.DB.prepare(`
+        INSERT INTO invoices (
+          reservation_id,
+          subtotal,
+          itbis,
+          total,
+          payment_method,
+          payment_status,
+          notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        RETURNING id, invoice_number
+      `);
+
+      const result = await stmt.bind(
+        body.reservation_id,
+        body.subtotal,
+        body.itbis,
+        body.total,
+        body.payment_method || 'cash',
+        body.payment_status || 'pending',
+        body.notes || null
+      ).first();
+
+      return json({
+        success: true,
+        message: "Factura creada correctamente",
+        data: {
+          id: result.id,
+          invoice_number: result.invoice_number
+        }
+      }, 201);
+    } catch (e) {
+      return json({ success: false, error: "Error al crear factura: " + e.message }, 500);
+    }
+  }
+
+  if (request.method === "PUT" && id) {
+    try {
+      const body = await request.json();
+
+      const exists = await env.DB.prepare("SELECT 1 FROM invoices WHERE id = ?").bind(id).first();
+      if (!exists) return json({ success: false, error: "Factura no encontrada" }, 404);
+
+      await env.DB.prepare(`
+        UPDATE invoices SET
+          subtotal = ?,
+          itbis = ?,
+          total = ?,
+          payment_method = ?,
+          payment_status = ?,
+          notes = ?,
+          updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(
+        body.subtotal ?? 0,
+        body.itbis ?? 0,
+        body.total ?? 0,
+        body.payment_method || 'cash',
+        body.payment_status || 'pending',
+        body.notes || null,
+        id
+      ).run();
+
+      return json({ success: true, message: "Factura actualizada" });
+    } catch (e) {
+      return json({ success: false, error: "Error al actualizar factura: " + e.message }, 500);
+    }
+  }
+
+  if (request.method === "DELETE" && id) {
+    try {
+      const exists = await env.DB.prepare("SELECT 1 FROM invoices WHERE id = ?").bind(id).first();
+      if (!exists) return json({ success: false, error: "Factura no encontrada" }, 404);
+
+      await env.DB.prepare("DELETE FROM invoices WHERE id = ?").bind(id).run();
+      return json({ success: true, message: "Factura eliminada" });
+    } catch (e) {
+      return json({ success: false, error: "Error al eliminar factura: " + e.message }, 500);
+    }
+  }
+
+     return json({error:"Not Found"},404);
     } catch(err){
       return json({error:err.message},500);
     }
