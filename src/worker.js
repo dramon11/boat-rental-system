@@ -1045,8 +1045,3 @@ if (url.pathname.startsWith("/api/invoices")) {
 }
    }
   }
-}
-
-
-
-
