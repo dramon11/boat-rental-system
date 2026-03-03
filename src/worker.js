@@ -1,7 +1,10 @@
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { "Content-Type": "application/json" } });
+    const json = (data, status = 200) => new Response(JSON.stringify(data), {
+      status,
+      headers: { "Content-Type": "application/json" }
+    });
 
     if (url.pathname === "/" && request.method === "GET") {
       const html = `<!DOCTYPE html>
@@ -109,9 +112,9 @@ async function loadView(view) {
   else if (view === "invoices") await loadInvoices(content);
 }
 
-// Dashboard profesional (la versión que me mostraste, integrada y funcional)
+// Dashboard profesional (versión corregida y funcional)
 async function loadDashboard(content) {
-  content.innerHTML = `
+  content.innerHTML = \`
     <h1>Dashboard Ejecutivo</h1>
     <div class="stats-grid">
       <div class="stat-card">
@@ -153,7 +156,7 @@ async function loadDashboard(content) {
         <canvas id="customersChart"></canvas>
       </div>
     </div>
-  `;
+  \`;
 
   try {
     const [counts, incomeMonthly, resMonthly, resStatus] = await Promise.all([
@@ -315,7 +318,7 @@ async function loadDashboard(content) {
 
 // Clientes - Lista
 async function loadCustomers(content) {
-  content.innerHTML = `
+  content.innerHTML = \`
     <h1>Clientes</h1>
     <button class="btn btn-success" style="margin-bottom:24px;" onclick="openCustomerModal()">+ Nuevo Cliente</button>
     <div class="card table-container">
@@ -324,7 +327,7 @@ async function loadCustomers(content) {
         <tbody id="custBody"></tbody>
       </table>
     </div>
-  `;
+  \`;
 
   try {
     const data = await api("GET", "/api/customers");
@@ -332,16 +335,16 @@ async function loadCustomers(content) {
     tbody.innerHTML = data.length ? "" : '<tr><td colspan="5" style="text-align:center;padding:40px;">No hay clientes</td></tr>';
     data.forEach(c => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${c.full_name || '-'}</td>
-        <td>${c.document_id || '-'}</td>
-        <td>${c.phone || '-'}</td>
-        <td>${c.email || '-'}</td>
+      tr.innerHTML = \`
+        <td>\${c.full_name || '-'}</td>
+        <td>\${c.document_id || '-'}</td>
+        <td>\${c.phone || '-'}</td>
+        <td>\${c.email || '-'}</td>
         <td>
-          <button class="btn btn-edit" onclick="openCustomerModal(${c.id})">Editar</button>
-          <button class="btn btn-delete" onclick="deleteItem('customers', ${c.id})">Eliminar</button>
+          <button class="btn btn-edit" onclick="openCustomerModal(\${c.id})">Editar</button>
+          <button class="btn btn-delete" onclick="deleteItem('customers', \${c.id})">Eliminar</button>
         </td>
-      `;
+      \`;
       tbody.appendChild(tr);
     });
   } catch(e) { showToast("Error cargando clientes", "error"); }
@@ -353,17 +356,17 @@ async function openCustomerModal(id = null) {
   let data = { full_name: '', document_id: '', phone: '', email: '' };
   if (id) data = await api("GET", "/api/customers/" + id).catch(() => data);
 
-  document.getElementById("modalContent").innerHTML = `
-    <h2>${title}</h2>
-    <div class="form-group"><label>Nombre completo</label><input id="c_name" value="${data.full_name}"></div>
-    <div class="form-group"><label>Documento</label><input id="c_doc" value="${data.document_id}"></div>
-    <div class="form-group"><label>Teléfono</label><input id="c_phone" value="${data.phone}"></div>
-    <div class="form-group"><label>Email</label><input id="c_email" value="${data.email}"></div>
+  document.getElementById("modalContent").innerHTML = \`
+    <h2>\${title}</h2>
+    <div class="form-group"><label>Nombre completo</label><input id="c_name" value="\${data.full_name || ''}"></div>
+    <div class="form-group"><label>Documento</label><input id="c_doc" value="\${data.document_id || ''}"></div>
+    <div class="form-group"><label>Teléfono</label><input id="c_phone" value="\${data.phone || ''}"></div>
+    <div class="form-group"><label>Email</label><input id="c_email" value="\${data.email || ''}"></div>
     <div style="margin-top:28px;text-align:right;">
-      <button class="btn btn-success" onclick="saveCustomer(${id||''})">Guardar</button>
+      <button class="btn btn-success" onclick="saveCustomer(\${id||''})">Guardar</button>
       <button class="btn" onclick="closeModal()">Cancelar</button>
     </div>
-  `;
+  \`;
   document.getElementById("modal").classList.add("active");
 }
 
@@ -387,7 +390,7 @@ async function saveCustomer(id) {
 
 // Botes - Lista + Modal
 async function loadBoats(content) {
-  content.innerHTML = `
+  content.innerHTML = \`
     <h1>Botes</h1>
     <button class="btn btn-success" style="margin-bottom:24px;" onclick="openBoatModal()">+ Nuevo Bote</button>
     <div class="card table-container">
@@ -396,7 +399,7 @@ async function loadBoats(content) {
         <tbody id="boatBody"></tbody>
       </table>
     </div>
-  `;
+  \`;
 
   try {
     const data = await api("GET", "/api/boats");
@@ -404,17 +407,17 @@ async function loadBoats(content) {
     tbody.innerHTML = data.length ? "" : '<tr><td colspan="6" style="text-align:center;padding:40px;">No hay botes</td></tr>';
     data.forEach(b => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${b.name}</td>
-        <td>${b.type || '-'}</td>
-        <td>${b.capacity || '-'}</td>
-        <td>RD$ ${Number(b.price_per_hour||0).toFixed(2)}</td>
-        <td>${b.status}</td>
+      tr.innerHTML = \`
+        <td>\${b.name}</td>
+        <td>\${b.type || '-'}</td>
+        <td>\${b.capacity || '-'}</td>
+        <td>RD$ \${Number(b.price_per_hour||0).toFixed(2)}</td>
+        <td>\${b.status}</td>
         <td>
-          <button class="btn btn-edit" onclick="openBoatModal(${b.id})">Editar</button>
-          <button class="btn btn-delete" onclick="deleteItem('boats',${b.id})">Eliminar</button>
+          <button class="btn btn-edit" onclick="openBoatModal(\${b.id})">Editar</button>
+          <button class="btn btn-delete" onclick="deleteItem('boats',\${b.id})">Eliminar</button>
         </td>
-      `;
+      \`;
       tbody.appendChild(tr);
     });
   } catch(e) { showToast("Error cargando botes", "error"); }
@@ -425,24 +428,24 @@ async function openBoatModal(id = null) {
   let data = { name: '', type: '', capacity: '', status: 'available', price_per_hour: '' };
   if (id) data = await api("GET", "/api/boats/" + id).catch(() => data);
 
-  document.getElementById("modalContent").innerHTML = `
-    <h2>${title}</h2>
-    <div class="form-group"><label>Nombre del bote</label><input id="b_name" value="${data.name}"></div>
-    <div class="form-group"><label>Tipo (Lancha, Yate...)</label><input id="b_type" value="${data.type}"></div>
-    <div class="form-group"><label>Capacidad (personas)</label><input id="b_capacity" type="number" value="${data.capacity}"></div>
+  document.getElementById("modalContent").innerHTML = \`
+    <h2>\${title}</h2>
+    <div class="form-group"><label>Nombre del bote</label><input id="b_name" value="\${data.name || ''}"></div>
+    <div class="form-group"><label>Tipo (Lancha, Yate...)</label><input id="b_type" value="\${data.type || ''}"></div>
+    <div class="form-group"><label>Capacidad (personas)</label><input id="b_capacity" type="number" value="\${data.capacity || ''}"></div>
     <div class="form-group"><label>Estado</label>
       <select id="b_status">
-        <option value="available" ${data.status==='available'?'selected':''}>Disponible</option>
-        <option value="rented" ${data.status==='rented'?'selected':''}>Alquilado</option>
-        <option value="maintenance" ${data.status==='maintenance'?'selected':''}>Mantenimiento</option>
+        <option value="available" \${data.status==='available'?'selected':''}>Disponible</option>
+        <option value="rented" \${data.status==='rented'?'selected':''}>Alquilado</option>
+        <option value="maintenance" \${data.status==='maintenance'?'selected':''}>Mantenimiento</option>
       </select>
     </div>
-    <div class="form-group"><label>Precio por hora (RD$)</label><input id="b_price" type="number" step="0.01" value="${data.price_per_hour}"></div>
+    <div class="form-group"><label>Precio por hora (RD$)</label><input id="b_price" type="number" step="0.01" value="\${data.price_per_hour || ''}"></div>
     <div style="margin-top:28px;text-align:right;">
-      <button class="btn btn-success" onclick="saveBoat(${id||''})">Guardar</button>
+      <button class="btn btn-success" onclick="saveBoat(\${id||''})">Guardar</button>
       <button class="btn" onclick="closeModal()">Cancelar</button>
     </div>
-  `;
+  \`;
   document.getElementById("modal").classList.add("active");
 }
 
@@ -467,7 +470,7 @@ async function saveBoat(id) {
 
 // Reservas - con cálculo de precio
 async function loadReservations(content) {
-  content.innerHTML = `
+  content.innerHTML = \`
     <h1>Reservas</h1>
     <button class="btn btn-success" style="margin-bottom:24px;" onclick="openReservationModal()">+ Nueva Reserva</button>
     <div class="card table-container">
@@ -476,7 +479,7 @@ async function loadReservations(content) {
         <tbody id="resBody"></tbody>
       </table>
     </div>
-  `;
+  \`;
 
   try {
     const data = await api("GET", "/api/reservations?full=true");
@@ -484,18 +487,18 @@ async function loadReservations(content) {
     tbody.innerHTML = data.length ? "" : '<tr><td colspan="7" style="text-align:center;padding:40px;">No hay reservas</td></tr>';
     data.forEach(r => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>#${r.id}</td>
-        <td>${r.customer_name || '-'}</td>
-        <td>${r.boat_name || '-'}</td>
-        <td>${new Date(r.start_time).toLocaleString('es-DO')}</td>
-        <td>${new Date(r.end_time).toLocaleString('es-DO')}</td>
-        <td>${r.status}</td>
+      tr.innerHTML = \`
+        <td>#\${r.id}</td>
+        <td>\${r.customer_name || '-'}</td>
+        <td>\${r.boat_name || '-'}</td>
+        <td>\${new Date(r.start_time).toLocaleString('es-DO')}</td>
+        <td>\${new Date(r.end_time).toLocaleString('es-DO')}</td>
+        <td>\${r.status}</td>
         <td>
-          <button class="btn btn-edit" onclick="openReservationModal(${r.id})">Editar</button>
-          <button class="btn btn-delete" onclick="deleteItem('reservations',${r.id})">Eliminar</button>
+          <button class="btn btn-edit" onclick="openReservationModal(\${r.id})">Editar</button>
+          <button class="btn btn-delete" onclick="deleteItem('reservations',\${r.id})">Eliminar</button>
         </td>
-      `;
+      \`;
       tbody.appendChild(tr);
     });
   } catch(e) { showToast("Error cargando reservas", "error"); }
@@ -507,19 +510,19 @@ async function openReservationModal(id = null) {
 
   if (id) data = await api("GET", "/api/reservations/" + id).catch(() => data);
 
-  document.getElementById("modalContent").innerHTML = `
-    <h2>${title}</h2>
+  document.getElementById("modalContent").innerHTML = \`
+    <h2>\${title}</h2>
     <div class="form-group"><label>Cliente</label><select id="r_customer"></select></div>
     <div class="form-group"><label>Bote</label><select id="r_boat" onchange="calcReservationPrice()"></select></div>
-    <div class="form-group"><label>Inicio</label><input type="datetime-local" id="r_start" onchange="calcReservationPrice()" value="${data.start_time ? data.start_time.slice(0,16) : ''}"></div>
-    <div class="form-group"><label>Fin</label><input type="datetime-local" id="r_end" onchange="calcReservationPrice()" value="${data.end_time ? data.end_time.slice(0,16) : ''}"></div>
+    <div class="form-group"><label>Inicio</label><input type="datetime-local" id="r_start" onchange="calcReservationPrice()" value="\${data.start_time ? data.start_time.slice(0,16) : ''}"></div>
+    <div class="form-group"><label>Fin</label><input type="datetime-local" id="r_end" onchange="calcReservationPrice()" value="\${data.end_time ? data.end_time.slice(0,16) : ''}"></div>
     <div class="form-group"><label>Duración estimada</label><div id="r_duration" class="price-info">0 horas</div></div>
     <div class="form-group"><label>Precio estimado</label><div id="r_total" class="price-info">RD$ 0.00</div></div>
     <div style="margin-top:28px;text-align:right;">
-      <button class="btn btn-success" onclick="saveReservation(${id||''})">Guardar</button>
+      <button class="btn btn-success" onclick="saveReservation(\${id||''})">Guardar</button>
       <button class="btn" onclick="closeModal()">Cancelar</button>
     </div>
-  `;
+  \`;
 
   // Cargar clientes y botes
   const customers = await api("GET", "/api/customers");
@@ -593,7 +596,7 @@ async function saveReservation(id) {
 
 // Facturación (básica - puedes expandir)
 async function loadInvoices(content) {
-  content.innerHTML = `
+  content.innerHTML = \`
     <h1>Facturación</h1>
     <button class="btn btn-success" style="margin-bottom:24px;" onclick="alert('Próximamente: Crear factura desde reserva')">+ Nueva Factura</button>
     <div class="card table-container">
@@ -602,7 +605,7 @@ async function loadInvoices(content) {
         <tbody id="invBody"></tbody>
       </table>
     </div>
-  `;
+  \`;
 
   try {
     const data = await api("GET", "/api/invoices");
@@ -610,14 +613,14 @@ async function loadInvoices(content) {
     tbody.innerHTML = data.length ? "" : '<tr><td colspan="6" style="text-align:center;padding:40px;">No hay facturas</td></tr>';
     data.forEach(i => {
       const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>#${i.id}</td>
-        <td>#${i.reservation_id || '-'}</td>
-        <td>RD$ ${Number(i.total||0).toFixed(2)}</td>
-        <td>${i.payment_method || '-'}</td>
-        <td>${i.created_at ? new Date(i.created_at).toLocaleDateString('es-DO') : '-'}</td>
-        <td><button class="btn btn-delete" onclick="deleteItem('invoices',${i.id})">Eliminar</button></td>
-      `;
+      tr.innerHTML = \`
+        <td>#\${i.id}</td>
+        <td>#\${i.reservation_id || '-'}</td>
+        <td>RD$ \${Number(i.total||0).toFixed(2)}</td>
+        <td>\${i.payment_method || '-'}</td>
+        <td>\${i.created_at ? new Date(i.created_at).toLocaleDateString('es-DO') : '-'}</td>
+        <td><button class="btn btn-delete" onclick="deleteItem('invoices',\${i.id})">Eliminar</button></td>
+      \`;
       tbody.appendChild(tr);
     });
   } catch(e) { showToast("Error cargando facturas", "error"); }
