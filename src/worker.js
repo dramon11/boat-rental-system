@@ -42,10 +42,7 @@ export default {
     .input-search{padding:6px 12px;border:1px solid #ccc;border-radius:4px;}
     .modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;}
     .modal-overlay.active{display:flex;}
-    .modal{background:white;padding:20px;border-radius:10px;width:520px;max-width:92vw;}
-    .form-group{margin-bottom:16px;}
-    .form-group label{display:block;margin-bottom:6px;font-weight:500;color:#334155;}
-    .form-group input, .form-group select{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:6px;}
+    .modal{background:white;padding:20px;border-radius:10px;width:400px;}
     .toast{position:fixed;bottom:20px;right:20px;color:white;padding:12px 18px;border-radius:6px;opacity:0;transition:opacity .4s;z-index:1000;}
     .toast.show{opacity:1;}
     .toast.error{background:#ef4444;}
@@ -55,7 +52,7 @@ export default {
 <body>
   <div class="sidebar">
     <h2>⚓ BoatERP</h2>
-    <div class="menu-item active" onclick="loadDashboard()"><span>📊</span> Dashboard</div>
+    <div class="menu-item active" onclick="showDashboard()"><span>📊</span> Dashboard</div>
     <div class="menu-item" onclick="loadCustomers()"><span>👥</span> Clientes</div>
     <div class="menu-item" onclick="loadBoats()"><span>⛵</span> Botes</div>
     <div class="menu-item" onclick="loadReservations()"><span>📅</span> Reservas</div>
@@ -67,7 +64,7 @@ export default {
   </div>
   <div class="content" id="mainContent"></div>
 
-  <!-- MODAL CLIENTES (sin cambios) -->
+  <!-- MODAL CLIENTES -->
   <div id="customerModal" class="modal-overlay">
     <div class="modal">
       <h3 id="modalTitle">Nuevo Cliente</h3>
@@ -82,7 +79,7 @@ export default {
     </div>
   </div>
 
-  <!-- MODAL BOTES (sin cambios) -->
+  <!-- MODAL BOTES -->
   <div id="boatModal" class="modal-overlay">
     <div class="modal">
       <h3 id="boatModalTitle">Nuevo Bote</h3>
@@ -97,76 +94,44 @@ export default {
     </div>
   </div>
 
-  <!-- MODAL RESERVAS – profesional -->
+  <!-- MODAL RESERVAS -->
   <div id="reservationModal" class="modal-overlay">
-    <div class="modal" style="width:520px">
+    <div class="modal" style="width:500px">
       <h3 id="reservationModalTitle">Nueva Reserva</h3>
-      <div class="form-group">
-        <label>Cliente</label>
-        <select id="customerId"></select>
-      </div>
-      <div class="form-group">
-        <label>Bote</label>
-        <select id="boatId" onchange="calculateDurationAndTotal()"></select>
-      </div>
-      <div class="form-group">
-        <label>Inicio</label>
-        <input id="startTime" type="datetime-local" onchange="calculateDurationAndTotal()">
-      </div>
-      <div class="form-group">
-        <label>Fin</label>
-        <input id="endTime" type="datetime-local" onchange="calculateDurationAndTotal()">
-      </div>
-      <div class="form-group">
-        <label>Duración (horas)</label>
-        <input id="duration" type="number" step="0.5" readonly style="background:#f8fafc;">
-      </div>
-      <div class="form-group">
-        <label>Total estimado</label>
-        <input id="totalAmount" type="text" readonly style="background:#f8fafc;font-weight:bold;">
-      </div>
-      <div style="text-align:right;margin-top:20px;">
-        <button class="btn" onclick="closeReservationModal()">Cancelar</button>
+      <select id="customerId" style="width:100%;margin-bottom:8px">
+        <option value="">Seleccionar Cliente</option>
+      </select>
+      <select id="boatId" style="width:100%;margin-bottom:8px">
+        <option value="">Seleccionar Bote</option>
+      </select>
+      <input id="startTime" type="datetime-local" placeholder="Inicio" style="width:100%;margin-bottom:8px"/>
+      <input id="endTime" type="datetime-local" placeholder="Fin" style="width:100%;margin-bottom:8px"/>
+      <input id="duration" placeholder="Duración (horas)" type="number" style="width:100%;margin-bottom:8px"/>
+      <div style="text-align:right;margin-top:10px;">
         <button class="btn-success" onclick="saveReservation()">Guardar</button>
+        <button class="btn" onclick="closeReservationModal()">Cancelar</button>
       </div>
     </div>
   </div>
 
-  <!-- MODAL FACTURAS – profesional -->
+  <!-- MODAL FACTURAS -->
   <div id="invoiceModal" class="modal-overlay">
-    <div class="modal" style="width:520px">
+    <div class="modal" style="width:500px">
       <h3 id="invoiceModalTitle">Nueva Factura</h3>
-      <div class="form-group">
-        <label>Reserva (opcional)</label>
-        <select id="reservationId" onchange="loadFromReservation()"></select>
-      </div>
-      <div class="form-group">
-        <label>Cliente</label>
-        <input id="invoiceCustomer" readonly style="background:#f8fafc;">
-      </div>
-      <div class="form-group">
-        <label>Subtotal</label>
-        <input id="subtotal" type="number" step="0.01">
-      </div>
-      <div class="form-group">
-        <label>ITBIS (18%)</label>
-        <input id="itbis" type="number" step="0.01">
-      </div>
-      <div class="form-group">
-        <label>Total</label>
-        <input id="total" type="number" step="0.01">
-      </div>
-      <div class="form-group">
-        <label>Método de pago</label>
-        <select id="paymentMethod">
-          <option value="cash">Efectivo</option>
-          <option value="card">Tarjeta</option>
-          <option value="transfer">Transferencia</option>
-        </select>
-      </div>
-      <div style="text-align:right;margin-top:20px;">
-        <button class="btn" onclick="closeInvoiceModal()">Cancelar</button>
+      <select id="reservationId" style="width:100%;margin-bottom:8px">
+        <option value="">Seleccionar Reserva (opcional)</option>
+      </select>
+      <input id="subtotal" type="number" placeholder="Subtotal" style="width:100%;margin-bottom:8px"/>
+      <input id="itbis" type="number" placeholder="ITBIS 18%" style="width:100%;margin-bottom:8px"/>
+      <input id="total" type="number" placeholder="Total" style="width:100%;margin-bottom:8px"/>
+      <select id="paymentMethod" style="width:100%;margin-bottom:8px">
+        <option value="cash">Efectivo</option>
+        <option value="card">Tarjeta</option>
+        <option value="transfer">Transferencia</option>
+      </select>
+      <div style="text-align:right;margin-top:10px;">
         <button class="btn-success" onclick="saveInvoice()">Guardar</button>
+        <button class="btn" onclick="closeInvoiceModal()">Cancelar</button>
       </div>
     </div>
   </div>
@@ -222,9 +187,230 @@ export default {
     }
     function showDashboard() { loadDashboard(); }
 
-    // ... (todo el código de clientes y botes que ya tenías permanece exactamente igual)
+    // Clientes (sin cambios)
+    async function loadCustomers() {
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      document.querySelector('.menu-item[onclick="loadCustomers()"]').classList.add('active');
+      const container = document.getElementById('mainContent');
+      container.innerHTML = \`
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h2>Clientes</h2>
+          <div>
+            <input id="searchInput" class="input-search" placeholder="Buscar por nombre o documento..." />
+            <button class="btn-success" onclick="openCustomerModal()">+ Nuevo Cliente</button>
+          </div>
+        </div>
+        <div class="card"><div id="customerTable">Cargando clientes...</div></div>
+      \`;
+      await fetchCustomers();
+    }
+    async function fetchCustomers() {
+      try {
+        const res = await fetch('/api/customers');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        renderCustomerTable(data);
+        document.getElementById("searchInput").addEventListener("input", e => {
+          const val = e.target.value.toLowerCase();
+          const filtered = data.filter(c =>
+            (c.full_name || '').toLowerCase().includes(val) ||
+            (c.document_id || '').toLowerCase().includes(val)
+          );
+          renderCustomerTable(filtered);
+        });
+      } catch {
+        document.getElementById("customerTable").innerHTML = "<p>Error cargando clientes.</p>";
+      }
+    }
+    function renderCustomerTable(data) {
+      const el = document.getElementById("customerTable");
+      if (!data || data.length === 0) { el.innerHTML = "<p>No hay clientes.</p>"; return; }
+      let html = '<table class="data-table"><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Acciones</th></tr></thead><tbody>';
+      data.forEach(c => {
+        html += \`<tr data-id="\${c.id}">
+          <td>\${c.full_name || ''}</td>
+          <td>\${c.document_id || ''}</td>
+          <td>\${c.phone || '-'}</td>
+          <td>\${c.email || '-'}</td>
+          <td>
+            <button class="btn btn-success" onclick="editCustomer(this)">Editar</button>
+            <button class="btn btn-danger" onclick="deleteCustomer(\${c.id})">Eliminar</button>
+          </td>
+        </tr>\`;
+      });
+      html += '</tbody></table>';
+      el.innerHTML = html;
+    }
+    function openCustomerModal() {
+      editingCustomerId = null;
+      document.getElementById("modalTitle").textContent = "Nuevo Cliente";
+      document.getElementById("name").value = "";
+      document.getElementById("doc").value = "";
+      document.getElementById("phone").value = "";
+      document.getElementById("email").value = "";
+      document.getElementById("customerModal").classList.add("active");
+    }
+    function editCustomer(btn) {
+      const row = btn.closest('tr');
+      editingCustomerId = parseInt(row.dataset.id);
+      document.getElementById("modalTitle").textContent = "Editar Cliente";
+      document.getElementById("name").value = row.cells[0].textContent.trim();
+      document.getElementById("doc").value = row.cells[1].textContent.trim();
+      document.getElementById("phone").value = row.cells[2].textContent.trim() === '-' ? '' : row.cells[2].textContent.trim();
+      document.getElementById("email").value = row.cells[3].textContent.trim() === '-' ? '' : row.cells[3].textContent.trim();
+      document.getElementById("customerModal").classList.add("active");
+    }
+    function closeCustomerModal() {
+      document.getElementById("customerModal").classList.remove("active");
+    }
+    async function saveCustomer() {
+      const body = {
+        full_name: document.getElementById("name").value.trim(),
+        document_id: document.getElementById("doc").value.trim(),
+        phone: document.getElementById("phone").value.trim(),
+        email: document.getElementById("email").value.trim()
+      };
+      const isEdit = editingCustomerId !== null;
+      try {
+        const res = await fetch(isEdit ? '/api/customers/' + editingCustomerId : '/api/customers', {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error();
+        showToast(isEdit ? "Cliente actualizado" : "Cliente creado", "success");
+        closeCustomerModal();
+        await fetchCustomers();
+        await loadDashboard();
+      } catch {
+        showToast("Error al guardar cliente", "error");
+      }
+    }
+    async function deleteCustomer(id) {
+      if (!confirm("¿Seguro eliminar cliente?")) return;
+      try {
+        const res = await fetch('/api/customers/' + id, { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        showToast("Cliente eliminado", "success");
+        await fetchCustomers();
+        await loadDashboard();
+      } catch {
+        showToast("Error al eliminar cliente", "error");
+      }
+    }
+    // Botes (sin cambios)
+    async function loadBoats() {
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      document.querySelector('.menu-item[onclick="loadBoats()"]').classList.add('active');
+      const container = document.getElementById('mainContent');
+      container.innerHTML = \`
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <h2>Botes</h2>
+          <div>
+            <input id="boatSearchInput" class="input-search" placeholder="Buscar por nombre o tipo..." />
+            <button class="btn-success" onclick="openBoatModal()">+ Nuevo Bote</button>
+          </div>
+        </div>
+        <div class="card"><div id="boatTable">Cargando botes...</div></div>
+      \`;
+      await fetchBoats();
+    }
+    async function fetchBoats() {
+      try {
+        const res = await fetch('/api/boats');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        renderBoatTable(data);
+        document.getElementById("boatSearchInput").addEventListener("input", e => {
+          const val = e.target.value.toLowerCase();
+          const filtered = data.filter(b =>
+            (b.name || '').toLowerCase().includes(val) ||
+            (b.type || '').toLowerCase().includes(val)
+          );
+          renderBoatTable(filtered);
+        });
+      } catch {
+        document.getElementById("boatTable").innerHTML = "<p>Error cargando botes.</p>";
+      }
+    }
+    function renderBoatTable(data) {
+      const el = document.getElementById("boatTable");
+      if (!data || data.length === 0) { el.innerHTML = "<p>No hay botes.</p>"; return; }
+      let html = '<table class="data-table"><thead><tr><th>Nombre</th><th>Tipo</th><th>Capacidad</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
+      data.forEach(b => {
+        html += \`<tr data-id="\${b.id}">
+          <td>\${b.name || ''}</td>
+          <td>\${b.type || ''}</td>
+          <td>\${b.capacity || '-'}</td>
+          <td>\${b.status || '-'}</td>
+          <td>
+            <button class="btn btn-success" onclick="editBoat(this)">Editar</button>
+            <button class="btn btn-danger" onclick="deleteBoat(\${b.id})">Eliminar</button>
+          </td>
+        </tr>\`;
+      });
+      html += '</tbody></table>';
+      el.innerHTML = html;
+    }
+    function openBoatModal() {
+      editingBoatId = null;
+      document.getElementById("boatModalTitle").textContent = "Nuevo Bote";
+      document.getElementById("boatName").value = "";
+      document.getElementById("boatType").value = "";
+      document.getElementById("boatCapacity").value = "";
+      document.getElementById("boatStatus").value = "";
+      document.getElementById("boatModal").classList.add("active");
+    }
+    function editBoat(btn) {
+      const row = btn.closest('tr');
+      editingBoatId = parseInt(row.dataset.id);
+      document.getElementById("boatModalTitle").textContent = "Editar Bote";
+      document.getElementById("boatName").value = row.cells[0].textContent.trim();
+      document.getElementById("boatType").value = row.cells[1].textContent.trim();
+      document.getElementById("boatCapacity").value = row.cells[2].textContent.trim();
+      document.getElementById("boatStatus").value = row.cells[3].textContent.trim();
+      document.getElementById("boatModal").classList.add("active");
+    }
+    function closeBoatModal() {
+      document.getElementById("boatModal").classList.remove("active");
+    }
+    async function saveBoat() {
+      const body = {
+        name: document.getElementById("boatName").value.trim(),
+        type: document.getElementById("boatType").value.trim(),
+        capacity: parseInt(document.getElementById("boatCapacity").value) || 0,
+        status: document.getElementById("boatStatus").value.trim()
+      };
+      const isEdit = editingBoatId !== null;
+      try {
+        const res = await fetch(isEdit ? '/api/boats/' + editingBoatId : '/api/boats', {
+          method: isEdit ? 'PUT' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!res.ok) throw new Error();
+        showToast(isEdit ? "Bote actualizado" : "Bote creado", "success");
+        closeBoatModal();
+        await fetchBoats();
+        await loadDashboard();
+      } catch {
+        showToast("Error al guardar bote", "error");
+      }
+    }
+    async function deleteBoat(id) {
+      if (!confirm("¿Seguro eliminar bote?")) return;
+      try {
+        const res = await fetch('/api/boats/' + id, { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        showToast("Bote eliminado", "success");
+        await fetchBoats();
+        await loadDashboard();
+      } catch {
+        showToast("Error al eliminar bote", "error");
+      }
+    }
 
-    // Reservas – profesional
+    // Reservas - CORREGIDO y funcional
     async function loadReservations() {
       document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
       document.querySelector('.menu-item[onclick="loadReservations()"]').classList.add('active');
@@ -256,25 +442,23 @@ export default {
           renderReservationsTable(filtered);
         });
       } catch (err) {
-        document.getElementById("reservationTable").innerHTML = "<p style='color:red'>Error cargando reservas: " + err.message + "</p>";
+        document.getElementById("reservationTable").innerHTML = "<p>Error cargando reservas: " + err.message + "</p>";
       }
     }
 
     function renderReservationsTable(data) {
       const el = document.getElementById("reservationTable");
       if (!data || data.length === 0) { el.innerHTML = "<p>No hay reservas.</p>"; return; }
-      let html = '<table class="data-table"><thead><tr><th>Cliente</th><th>Bote</th><th>Inicio</th><th>Fin</th><th>Duración (h)</th><th>Total</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
+      let html = '<table class="data-table"><thead><tr><th>Cliente</th><th>Bote</th><th>Inicio</th><th>Fin</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>';
       data.forEach(r => {
         html += \`<tr data-id="\${r.id}">
-          <td>\${r.customer_name || '-'}</td>
-          <td>\${r.boat_name || '-'}</td>
-          <td>\${r.start_time ? new Date(r.start_time).toLocaleString('es-DO') : '-'}</td>
-          <td>\${r.end_time ? new Date(r.end_time).toLocaleString('es-DO') : '-'}</td>
-          <td>\${r.duration_hours || '-'}</td>
-          <td>RD$ \${Number(r.total_amount || 0).toFixed(2)}</td>
-          <td>\${r.status || 'pendiente'}</td>
+          <td>\${r.customer_name || r.customer_id || '-'}</td>
+          <td>\${r.boat_name || r.boat_id || '-'}</td>
+          <td>\${r.start_time || '-'}</td>
+          <td>\${r.end_time || '-'}</td>
+          <td>\${r.status || '-'}</td>
           <td>
-            <button class="btn btn-success" onclick="editReservation(\${r.id})">Editar</button>
+            <button class="btn btn-success" onclick="editReservation(this)">Editar</button>
             <button class="btn btn-danger" onclick="deleteReservation(\${r.id})">Eliminar</button>
           </td>
         </tr>\`;
@@ -292,15 +476,16 @@ export default {
       customerSelect.innerHTML = '<option value="">Cargando clientes...</option>';
       try {
         const res = await fetch('/api/customers');
+        if (!res.ok) throw new Error('Clientes ' + res.status);
         const customers = await res.json();
-        customerSelect.innerHTML = '<option value="">Seleccione cliente</option>';
+        customerSelect.innerHTML = '<option value="">Seleccione Cliente</option>';
         customers.forEach(c => {
           const opt = document.createElement('option');
           opt.value = c.id;
           opt.textContent = c.full_name + (c.document_id ? ' (' + c.document_id + ')' : '');
           customerSelect.appendChild(opt);
         });
-      } catch {
+      } catch (err) {
         customerSelect.innerHTML = '<option value="">Error al cargar clientes</option>';
       }
 
@@ -309,47 +494,27 @@ export default {
       boatSelect.innerHTML = '<option value="">Cargando botes...</option>';
       try {
         const res = await fetch('/api/boats');
+        if (!res.ok) throw new Error('Botes ' + res.status);
         const boats = await res.json();
-        boatSelect.innerHTML = '<option value="">Seleccione bote</option>';
+        boatSelect.innerHTML = '<option value="">Seleccione Bote</option>';
         boats.forEach(b => {
           const opt = document.createElement('option');
           opt.value = b.id;
-          opt.dataset.priceHour = b.price_per_hour || 0;
-          opt.textContent = b.name + ' - ' + (b.type || 'Sin tipo') + ' ($' + Number(b.price_per_hour || 0).toFixed(2) + '/h)';
+          opt.textContent = b.name + ' (' + (b.type || 'Sin tipo') + ')';
           boatSelect.appendChild(opt);
         });
-      } catch {
+      } catch (err) {
         boatSelect.innerHTML = '<option value="">Error al cargar botes</option>';
       }
 
       document.getElementById("startTime").value = "";
       document.getElementById("endTime").value = "";
       document.getElementById("duration").value = "";
-      document.getElementById("totalAmount").value = "";
-
       document.getElementById("reservationModal").classList.add("active");
     }
 
-    function calculateDurationAndTotal() {
-      const start = document.getElementById("startTime").value;
-      const end = document.getElementById("endTime").value;
-      const boatSelect = document.getElementById("boatId");
-      const selected = boatSelect.options[boatSelect.selectedIndex];
-      const priceHour = parseFloat(selected?.dataset?.priceHour || 0);
-
-      if (start && end && priceHour > 0) {
-        const startDate = new Date(start);
-        const endDate = new Date(end);
-        const diffMs = endDate - startDate;
-        const hours = diffMs / (1000 * 60 * 60);
-        const total = hours * priceHour;
-
-        document.getElementById("duration").value = hours.toFixed(2);
-        document.getElementById("totalAmount").value = "RD$ " + total.toFixed(2);
-      } else {
-        document.getElementById("duration").value = "";
-        document.getElementById("totalAmount").value = "";
-      }
+    function closeReservationModal() {
+      document.getElementById("reservationModal").classList.remove("active");
     }
 
     async function saveReservation() {
@@ -357,50 +522,66 @@ export default {
       const boatId = document.getElementById("boatId").value;
       const startTime = document.getElementById("startTime").value;
       const endTime = document.getElementById("endTime").value;
-      const duration = parseFloat(document.getElementById("duration").value) || 0;
-      const totalAmount = parseFloat(document.getElementById("totalAmount").value.replace("RD$ ", "")) || 0;
+      const duration = parseInt(document.getElementById("duration").value) || 1;
 
-      if (!customerId || !boatId || !startTime || !endTime || duration <= 0) {
-        showToast("Complete todos los campos obligatorios", "error");
+      if (!customerId || !boatId || !startTime || !endTime) {
+        showToast("Complete todos los campos", "error");
         return;
       }
 
       const body = {
-        boat_id: boatId,
         customer_id: customerId,
+        boat_id: boatId,  // ← cambiado a boat_id como en tu tabla
         start_time: startTime,
         end_time: endTime,
-        duration_hours: duration,
-        total_amount: totalAmount,
-        status: 'pendiente'
+        duration: duration
       };
 
+      const isEdit = editingReservationId !== null;
       try {
-        const res = await fetch('/api/reservations', {
-          method: 'POST',
+        const res = await fetch(isEdit ? '/api/reservations/' + editingReservationId : '/api/reservations', {
+          method: isEdit ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
         if (!res.ok) throw new Error(await res.text());
-        showToast("Reserva creada correctamente", "success");
+        showToast(isEdit ? "Reserva actualizada" : "Reserva creada", "success");
         closeReservationModal();
         await loadReservations();
         await loadDashboard();
       } catch (err) {
-        console.error(err);
-        showToast("Error al guardar: " + err.message, "error");
+        console.error("Error saveReservation:", err);
+        showToast("Error al guardar reserva: " + err.message, "error");
       }
     }
 
-    function closeReservationModal() {
-      document.getElementById("reservationModal").classList.remove("active");
+    function editReservation(btn) {
+      const row = btn.closest('tr');
+      editingReservationId = parseInt(row.dataset.id);
+      document.getElementById("reservationModalTitle").textContent = "Editar Reserva";
+      openReservationModal();
+      // Puedes agregar aquí carga de datos actuales si quieres
     }
 
-    // Facturación – profesional
+    async function deleteReservation(id) {
+      if (!confirm("¿Seguro eliminar reserva?")) return;
+      try {
+        const res = await fetch('/api/reservations/' + id, { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        showToast("Reserva eliminada", "success");
+        await loadReservations();
+        await loadDashboard();
+      } catch {
+        showToast("Error al eliminar reserva", "error");
+      }
+    }
+
+    // Facturación
     async function loadInvoices() {
       document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
       document.querySelector('.menu-item[onclick="loadInvoices()"]').classList.add('active');
-      document.getElementById('mainContent').innerHTML = \`
+      const container = document.getElementById('mainContent');
+      container.innerHTML = \`
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
           <h2>Facturación</h2>
           <div>
@@ -416,7 +597,7 @@ export default {
     async function fetchInvoices() {
       try {
         const res = await fetch('/api/invoices');
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) throw new Error();
         const data = await res.json();
         renderInvoicesTable(data);
         document.getElementById("invoiceSearchInput").addEventListener("input", e => {
@@ -427,26 +608,24 @@ export default {
           );
           renderInvoicesTable(filtered);
         });
-      } catch (err) {
-        document.getElementById("invoiceTable").innerHTML = "<p style='color:red'>Error cargando facturas: " + err.message + "</p>";
+      } catch {
+        document.getElementById("invoiceTable").innerHTML = "<p>Error cargando facturas.</p>";
       }
     }
 
     function renderInvoicesTable(data) {
       const el = document.getElementById("invoiceTable");
       if (!data || data.length === 0) { el.innerHTML = "<p>No hay facturas.</p>"; return; }
-      let html = '<table class="data-table"><thead><tr><th>ID</th><th>Cliente</th><th>Reserva</th><th>Subtotal</th><th>ITBIS</th><th>Total</th><th>Método</th><th>Acciones</th></tr></thead><tbody>';
+      let html = '<table class="data-table"><thead><tr><th>ID</th><th>Cliente</th><th>Reserva</th><th>Total</th><th>Status</th><th>Acciones</th></tr></thead><tbody>';
       data.forEach(i => {
         html += \`<tr data-id="\${i.id}">
           <td>\${i.id}</td>
           <td>\${i.customer_name || '-'}</td>
           <td>\${i.reservation_id || '-'}</td>
-          <td>RD$ \${Number(i.subtotal || 0).toFixed(2)}</td>
-          <td>RD$ \${Number(i.itbis || 0).toFixed(2)}</td>
-          <td><strong>RD$ \${Number(i.total || 0).toFixed(2)}</strong></td>
-          <td>\${i.payment_method || '-'}</td>
+          <td>RD$ \${i.total || '0'}</td>
+          <td>\${i.status || '-'}</td>
           <td>
-            <button class="btn btn-success" onclick="editInvoice(\${i.id})">Editar</button>
+            <button class="btn btn-success" onclick="editInvoice(this)">Editar</button>
             <button class="btn btn-danger" onclick="deleteInvoice(\${i.id})">Eliminar</button>
           </td>
         </tr>\`;
@@ -455,54 +634,19 @@ export default {
       el.innerHTML = html;
     }
 
-    async function openInvoiceModal() {
+    function openInvoiceModal() {
       editingInvoiceId = null;
       document.getElementById("invoiceModalTitle").textContent = "Nueva Factura";
-
-      // Cargar reservas
-      const resSelect = document.getElementById("reservationId");
-      resSelect.innerHTML = '<option value="">Cargando reservas...</option>';
-      try {
-        const res = await fetch('/api/reservations');
-        const reservations = await res.json();
-        resSelect.innerHTML = '<option value="">Factura manual (sin reserva)</option>';
-        reservations.forEach(r => {
-          const opt = document.createElement('option');
-          opt.value = r.id;
-          opt.textContent = 'Reserva #' + r.id + ' - ' + (r.customer_name || 'Cliente') + ' - RD$ ' + Number(r.total_amount || 0).toFixed(2);
-          opt.dataset.subtotal = r.total_amount || 0;
-          opt.dataset.customer = r.customer_name || '';
-          resSelect.appendChild(opt);
-        });
-      } catch {
-        resSelect.innerHTML = '<option value="">Error al cargar reservas</option>';
-      }
-
-      document.getElementById("invoiceCustomer").value = "";
+      document.getElementById("reservationId").value = "";
       document.getElementById("subtotal").value = "";
       document.getElementById("itbis").value = "";
       document.getElementById("total").value = "";
       document.getElementById("paymentMethod").value = "cash";
-
       document.getElementById("invoiceModal").classList.add("active");
     }
 
-    function loadFromReservation() {
-      const select = document.getElementById("reservationId");
-      const option = select.options[select.selectedIndex];
-      if (option.dataset.subtotal) {
-        const subtotal = parseFloat(option.dataset.subtotal);
-        document.getElementById("invoiceCustomer").value = option.dataset.customer || "Cliente";
-        document.getElementById("subtotal").value = subtotal.toFixed(2);
-        const itbis = subtotal * 0.18;
-        document.getElementById("itbis").value = itbis.toFixed(2);
-        document.getElementById("total").value = (subtotal + itbis).toFixed(2);
-      } else {
-        document.getElementById("invoiceCustomer").value = "";
-        document.getElementById("subtotal").value = "";
-        document.getElementById("itbis").value = "";
-        document.getElementById("total").value = "";
-      }
+    function closeInvoiceModal() {
+      document.getElementById("invoiceModal").classList.remove("active");
     }
 
     async function saveInvoice() {
@@ -513,26 +657,41 @@ export default {
         total: parseFloat(document.getElementById("total").value) || 0,
         payment_method: document.getElementById("paymentMethod").value
       };
-
+      const isEdit = editingInvoiceId !== null;
       try {
-        const res = await fetch('/api/invoices', {
-          method: 'POST',
+        const res = await fetch(isEdit ? '/api/invoices/' + editingInvoiceId : '/api/invoices', {
+          method: isEdit ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(body)
         });
-        if (!res.ok) throw new Error(await res.text());
-        showToast("Factura creada correctamente", "success");
+        if (!res.ok) throw new Error();
+        showToast(isEdit ? "Factura actualizada" : "Factura creada", "success");
         closeInvoiceModal();
         await loadInvoices();
         await loadDashboard();
-      } catch (err) {
-        console.error(err);
-        showToast("Error al guardar factura: " + err.message, "error");
+      } catch {
+        showToast("Error al guardar factura", "error");
       }
     }
 
-    function closeInvoiceModal() {
-      document.getElementById("invoiceModal").classList.remove("active");
+    function editInvoice(btn) {
+      const row = btn.closest('tr');
+      editingInvoiceId = parseInt(row.dataset.id);
+      document.getElementById("invoiceModalTitle").textContent = "Editar Factura";
+      openInvoiceModal();
+    }
+
+    async function deleteInvoice(id) {
+      if (!confirm("¿Seguro eliminar factura?")) return;
+      try {
+        const res = await fetch('/api/invoices/' + id, { method: 'DELETE' });
+        if (!res.ok) throw new Error();
+        showToast("Factura eliminada", "success");
+        await loadInvoices();
+        await loadDashboard();
+      } catch {
+        showToast("Error al eliminar factura", "error");
+      }
     }
 
     function showToast(msg, type) {
@@ -551,7 +710,7 @@ export default {
         return new Response(html, { headers: { "Content-Type": "text/html" } });
       }
 
-      // API DASHBOARD (sin cambios)
+      // API DASHBOARD
       if (url.pathname === "/api/dashboard") {
         let income_today = 0;
         let active_rentals = 0;
@@ -632,12 +791,12 @@ export default {
         }
       }
 
-      // API RESERVAS – ajustado a tu tabla real
+      // API RESERVAS – ajustado a boat_id
       if (url.pathname.startsWith("/api/reservations")) {
         if (request.method === "GET") {
           const rows = await env.DB.prepare(`
             SELECT 
-              r.id, r.boat_id, r.customer_id, r.start_time, r.end_time, r.duration_hours, r.total_amount, r.status,
+              r.id, r.boat_id, r.customer_id, r.start_time, r.end_time, r.status,
               c.full_name AS customer_name,
               b.name AS boat_name
             FROM reservations r
@@ -649,18 +808,9 @@ export default {
         if (request.method === "POST") {
           const body = await request.json();
           await env.DB.prepare(`
-            INSERT INTO reservations (
-              boat_id, customer_id, start_time, end_time, duration_hours, total_amount, status
-            ) VALUES (?,?,?,?,?,?,?)
-          `).bind(
-            body.boat_id,
-            body.customer_id,
-            body.start_time,
-            body.end_time,
-            body.duration_hours,
-            body.total_amount,
-            body.status || 'pendiente'
-          ).run();
+            INSERT INTO reservations (boat_id, customer_id, start_time, end_time, status)
+            VALUES (?,?,?,?, 'pendiente')
+          `).bind(body.boat_id, body.customer_id, body.start_time, body.end_time).run();
           return json({ok:true});
         }
         if (request.method === "PUT") {
@@ -668,25 +818,8 @@ export default {
           const id = parts[parts.length-1];
           const body = await request.json();
           await env.DB.prepare(`
-            UPDATE reservations SET
-              boat_id = ?,
-              customer_id = ?,
-              start_time = ?,
-              end_time = ?,
-              duration_hours = ?,
-              total_amount = ?,
-              status = ?
-            WHERE id = ?
-          `).bind(
-            body.boat_id,
-            body.customer_id,
-            body.start_time,
-            body.end_time,
-            body.duration_hours,
-            body.total_amount,
-            body.status || 'active',
-            id
-          ).run();
+            UPDATE reservations SET boat_id=?, customer_id=?, start_time=?, end_time=?, status=? WHERE id=?
+          `).bind(body.boat_id, body.customer_id, body.start_time, body.end_time, body.status, id).run();
           return json({ok:true});
         }
         if (request.method === "DELETE") {
