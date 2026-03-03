@@ -95,7 +95,10 @@ async function api(method, path, body = null) {
     opts.body = JSON.stringify(body);
   }
   const res = await fetch(path, opts);
-  if (!res.ok) throw new Error(await res.text());
+  if (!res.ok) {
+    console.error("API error:", path, await res.text());
+    throw new Error("API failed");
+  }
   return res.json();
 }
 
@@ -113,7 +116,6 @@ async function loadView(view) {
   else if (view === "invoices") await loadInvoices(content);
 }
 
-// Dashboard con TODOS los gráficos solicitados (reales)
 async function loadDashboard(content) {
   content.innerHTML = \`
     <h1>Dashboard</h1>
@@ -127,32 +129,31 @@ async function loadDashboard(content) {
       <div class="chart-box"><h3>Ingresos Mensuales (Barras)</h3><canvas id="barChart"></canvas></div>
       <div class="chart-box"><h3>Reservas por Mes (Línea)</h3><canvas id="lineChart"></canvas></div>
       <div class="chart-box"><h3>Distribución de Estados (Pie)</h3><canvas id="pieChart"></canvas></div>
-      <div class="chart-box"><h3>Botes Disponibles vs Ocupados (Dona)</h3><canvas id="boatsChart"></canvas></div>
+      <div class="chart-box"><h3>Botes Disponibles vs Ocupados (Barras)</h3><canvas id="boatsChart"></canvas></div>
       <div class="chart-box"><h3>Clientes Registrados (Dona)</h3><canvas id="customersChart"></canvas></div>
     </div>
   \`;
 
   try {
-    const [counts, incomeMonthly, resMonthly, resStatus, boatsStatus] = await Promise.all([
+    const [counts, incomeMonthly, resMonthly, resStatus] = await Promise.all([
       api("GET", "/api/dashboard"),
       api("GET", "/api/income-monthly"),
       api("GET", "/api/reservations-monthly"),
-      api("GET", "/api/reservations-status"),
-      api("GET", "/api/boats-status")
+      api("GET", "/api/reservations-status")
     ]);
 
-    // Tarjetas superiores reales
+    // Tarjetas superiores
     document.getElementById("inc").textContent = "$" + Number(counts.income_today||0).toLocaleString();
     document.getElementById("act").textContent = counts.active_reservations;
     document.getElementById("boats").textContent = counts.available_boats;
     document.getElementById("cust").textContent = counts.total_customers;
 
-    // Gráficos reales existentes
+    // Gráficos reales
     charts.bar = new Chart(document.getElementById('barChart'), {
       type: 'bar',
       data: {
         labels: incomeMonthly.map(r => r.month || 'Sin datos'),
-        datasets: [{ label: 'Ingresos RD$', data: incomeMonthly.map(r => Number(r.total||0)), backgroundColor: '#3b82f6', borderRadius: 6 }]
+        datasets: [{ label: 'Ingresos RD$', data: incomeMonthly.map(r => Number(r.total||0)), backgroundColor: '#3b82f6' }]
       },
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
     });
@@ -175,24 +176,27 @@ async function loadDashboard(content) {
       options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
     });
 
-    // Nuevo gráfico: Botes Disponibles vs Ocupados (dona)
+    // Gráfico de BARRAS para Botes Disponibles vs Ocupados
+    const boatsTotal = (await api("GET", "/api/boats")).length || 1;
     charts.boats = new Chart(document.getElementById('boatsChart'), {
-      type: 'doughnut',
+      type: 'bar',
       data: {
-        labels: ['Disponibles', 'Ocupados/Mantenimiento'],
+        labels: ['Disponibles', 'Ocupados / Mantenimiento'],
         datasets: [{
-          data: [counts.available_boats || 0, (await api("GET", "/api/boats")).length - (counts.available_boats || 0)],
-          backgroundColor: ['#10b981', '#ef4444']
+          label: 'Cantidad de Botes',
+          data: [counts.available_boats || 0, boatsTotal - (counts.available_boats || 0)],
+          backgroundColor: ['#10b981', '#ef4444'],
+          borderRadius: 6
         }]
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
     });
 
-    // Nuevo gráfico: Clientes Totales (dona simple para visualización)
+    // Gráfico de DONA para Clientes Totales
     charts.customers = new Chart(document.getElementById('customersChart'), {
       type: 'doughnut',
       data: {
-        labels: ['Clientes Registrados', 'Sin actividad'],
+        labels: ['Clientes Registrados', 'Otros'],
         datasets: [{
           data: [counts.total_customers || 0, 0],
           backgroundColor: ['#3b82f6', '#e2e8f0']
@@ -240,7 +244,7 @@ async function loadCustomers(content) {
   } catch(e) { showToast("Error cargando clientes", "error"); }
 }
 
-// (Aquí copias las demás funciones que ya tenías: openCustomerModal, saveCustomer, loadBoats, openBoatModal, saveBoat, loadReservations, openReservationModal, calcReservationPrice, saveReservation, loadInvoices, closeModal, deleteItem, etc.)
+// (Aquí van todas las demás funciones que ya tenías: openCustomerModal, saveCustomer, loadBoats, openBoatModal, saveBoat, loadReservations, openReservationModal, calcReservationPrice, saveReservation, loadInvoices, closeModal, deleteItem, etc.)
 
 function closeModal() {
   document.getElementById("modal").classList.remove("active");
@@ -265,7 +269,7 @@ loadView("dashboard");
     }
 
     // ────────────────────────────────────────────────
-    //                  API ENDPOINTS (sin cambios)
+    //                  API ENDPOINTS
     // ────────────────────────────────────────────────
 
     if (url.pathname === "/api/dashboard") {
@@ -310,7 +314,7 @@ loadView("dashboard");
       ]);
     }
 
-    // Clientes - CRUD completo (ya lo tenías)
+    // Clientes - CRUD completo
     if (url.pathname.startsWith("/api/customers")) {
       const parts = url.pathname.split("/");
       const id = parts.length > 3 && !isNaN(parts[3]) ? parts[3] : null;
@@ -344,7 +348,7 @@ loadView("dashboard");
       }
     }
 
-    // Botes - CRUD completo (ya lo tenías)
+    // Botes - CRUD completo
     if (url.pathname.startsWith("/api/boats")) {
       const parts = url.pathname.split("/");
       const id = parts.length > 3 && !isNaN(parts[3]) ? parts[3] : null;
@@ -378,7 +382,7 @@ loadView("dashboard");
       }
     }
 
-    // Reservas - CRUD completo (ya lo tenías)
+    // Reservas - CRUD completo
     if (url.pathname.startsWith("/api/reservations")) {
       const parts = url.pathname.split("/");
       const id = parts.length > 3 && !isNaN(parts[3]) ? parts[3] : null;
