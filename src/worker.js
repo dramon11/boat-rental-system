@@ -1,15 +1,13 @@
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
+
     const json = (data, status = 200) => new Response(JSON.stringify(data), {
       status,
       headers: { "Content-Type": "application/json" },
     });
 
     try {
-      // ────────────────────────────────────────────────
-      // FRONTEND - HTML + JS completo
-      // ────────────────────────────────────────────────
       if (url.pathname === "/" && request.method === "GET") {
         const html = `
 <!DOCTYPE html>
@@ -17,212 +15,298 @@ export default {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>BoatERP - Gestión de Alquiler</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>Boat Rental ERP</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
-    * { margin:0; padding:0; box-sizing:border-box; }
-    body { font-family:'Inter',sans-serif; background:#f8fafc; color:#1e293b; }
-    .sidebar { width:240px; height:100vh; background:#0f172a; color:#e2e8f0; position:fixed; padding:24px 16px; overflow-y:auto; }
-    .sidebar h2 { margin-bottom:32px; font-size:1.5rem; }
-    .menu-item { padding:12px 16px; border-radius:8px; margin-bottom:6px; cursor:pointer; transition:all .2s; display:flex; align-items:center; gap:12px; }
-    .menu-item:hover { background:#1e293b; }
-    .menu-item.active { background:#2563eb; color:white; }
-    .header { margin-left:240px; height:68px; background:#1e40af; color:white; display:flex; align-items:center; justify-content:space-between; padding:0 32px; font-weight:600; }
-    .content { margin-left:240px; padding:32px; }
-    .card { background:white; padding:24px; border-radius:12px; box-shadow:0 4px 12px rgba(0,0,0,0.06); margin-bottom:24px; }
-    .data-table { width:100%; border-collapse:collapse; }
-    .data-table th, .data-table td { padding:12px 16px; text-align:left; border-bottom:1px solid #e2e8f0; }
-    .data-table th { background:#f8fafc; font-weight:600; color:#475569; }
-    .btn { padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:500; margin-right:8px; }
-    .btn-success { background:#22c55e; color:white; }
-    .btn-danger { background:#ef4444; color:white; }
-    .btn-outline { border:1px solid #cbd5e1; background:transparent; }
-    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.6); justify-content:center; align-items:center; z-index:1000; }
-    .modal-overlay.active { display:flex; }
-    .modal-content { background:white; border-radius:12px; width:560px; max-width:92vw; max-height:90vh; overflow-y:auto; padding:24px; box-shadow:0 10px 30px rgba(0,0,0,0.2); }
-    .toast { position:fixed; bottom:24px; right:24px; padding:14px 24px; border-radius:8px; color:white; opacity:0; transform:translateY(20px); transition:all .4s; z-index:2000; }
-    .toast.show { opacity:1; transform:translateY(0); }
-    .toast.success { background:#22c55e; }
-    .toast.error { background:#ef4444; }
-    .form-group { margin-bottom:16px; }
-    .form-group label { display:block; margin-bottom:6px; color:#475569; font-weight:500; }
-    .price-info { margin:16px 0; padding:16px; background:#f0f9ff; border:1px solid #bfdbfe; border-radius:8px; }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Inter',sans-serif;background:#f1f5f9;}
+    .sidebar{width:240px;height:100vh;background:#0f172a;color:#fff;position:fixed;padding:25px 20px;}
+    .sidebar h2{margin:0 0 40px 0;font-weight:700;}
+    .menu-item{padding:12px 14px;border-radius:8px;margin-bottom:10px;cursor:pointer;transition:.2s;display:flex;align-items:center;gap:12px;}
+    .menu-item:hover{background:#1e293b;}
+    .menu-item.active{background:#2563eb;}
+    .header{margin-left:240px;height:65px;background:#1e3a8a;display:flex;align-items:center;justify-content:space-between;padding:0 30px;color:white;font-weight:600;}
+    .content{margin-left:240px;padding:30px;}
+    .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+    .card{background:white;padding:20px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,0.05);}
+    .card h4{margin:0;font-weight:600;color:#64748b;}
+    .card h2{margin:10px 0 0 0;}
+    .charts{margin-top:40px;display:grid;grid-template-columns:repeat(2,1fr);gap:30px;}
+    .chart-box{background:white;padding:25px;border-radius:14px;box-shadow:0 6px 20px rgba(0,0,0,0.05);height:340px;}
+    .full-width{grid-column:span 2;}
+    .chart-container{height:280px;position:relative;}
+    .data-table{width:100%;border-collapse:collapse;}
+    .data-table th, .data-table td{padding:10px;border-bottom:1px solid #ccc;text-align:left;}
+    .btn{padding:6px 12px;border:none;border-radius:4px;cursor:pointer;}
+    .btn-danger{background:#ef4444;color:white;}
+    .btn-success{background:#22c55e;color:white;}
+    .input-search{padding:6px 12px;border:1px solid #ccc;border-radius:4px;}
+    .modal-overlay{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);justify-content:center;align-items:center;}
+    .modal-overlay.active{display:flex;}
+    .modal{background:white;padding:20px;border-radius:10px;width:520px;max-width:92vw;}
+    .toast{position:fixed;bottom:20px;right:20px;color:white;padding:12px 18px;border-radius:6px;opacity:0;transition:opacity .4s;z-index:1000;}
+    .toast.show{opacity:1;}
+    .toast.error{background:#ef4444;}
+    .toast.success{background:#22c55e;}
+    .price-group{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin:16px 0;}
+    .price-group label{font-size:0.9em;color:#64748b;display:block;margin-bottom:4px;}
   </style>
 </head>
 <body>
+  <div class="sidebar">
+    <h2>⚓ BoatERP</h2>
+    <div class="menu-item active" onclick="loadDashboard()"><span>📊</span> Dashboard</div>
+    <div class="menu-item" onclick="loadCustomers()"><span>👥</span> Clientes</div>
+    <div class="menu-item" onclick="loadBoats()"><span>⛵</span> Botes</div>
+    <div class="menu-item" onclick="loadReservations()"><span>📅</span> Reservas</div>
+    <div class="menu-item" onclick="loadInvoices()"><span>💳</span> Facturación</div>
+  </div>
+  <div class="header">
+    <div>Panel Administrativo</div>
+    <div>Admin</div>
+  </div>
+  <div class="content" id="mainContent"></div>
 
-<div class="sidebar">
-  <h2>⚓ BoatERP</h2>
-  <div class="menu-item active" onclick="loadSection('dashboard')">Dashboard</div>
-  <div class="menu-item" onclick="loadSection('customers')">Clientes</div>
-  <div class="menu-item" onclick="loadSection('boats')">Botes</div>
-  <div class="menu-item" onclick="loadSection('reservations')">Reservas</div>
-  <div class="menu-item" onclick="loadSection('invoices')">Facturación</div>
-</div>
-
-<div class="header">
-  <div>Panel Administrativo - Alquiler de Embarcaciones</div>
-  <div>Admin</div>
-</div>
-
-<div class="content" id="mainContent"></div>
-
-<!-- Modal genérico -->
-<div id="modalOverlay" class="modal-overlay">
-  <div class="modal-content">
-    <h3 id="modalTitle">Modal</h3>
-    <div id="modalBody"></div>
-    <div style="text-align:right; margin-top:24px;">
-      <button class="btn btn-outline" onclick="closeModal()">Cancelar</button>
-      <button class="btn-success" id="modalSaveBtn">Guardar</button>
+  <!-- MODAL CLIENTES -->
+  <div id="customerModal" class="modal-overlay">
+    <div class="modal">
+      <h3 id="modalTitle">Nuevo Cliente</h3>
+      <input id="name" placeholder="Nombre completo" style="width:100%;margin-bottom:8px"/>
+      <input id="doc" placeholder="Documento" style="width:100%;margin-bottom:8px"/>
+      <input id="phone" placeholder="Teléfono" style="width:100%;margin-bottom:8px"/>
+      <input id="email" placeholder="Email" style="width:100%;margin-bottom:8px"/>
+      <div style="text-align:right;margin-top:10px;">
+        <button class="btn-success" onclick="saveCustomer()">Guardar</button>
+        <button class="btn" onclick="closeCustomerModal()">Cancelar</button>
+      </div>
     </div>
   </div>
-</div>
 
-<div id="toast"></div>
+  <!-- MODAL BOTES -->
+  <div id="boatModal" class="modal-overlay">
+    <div class="modal">
+      <h3 id="boatModalTitle">Nuevo Bote</h3>
+      <input id="boatName" placeholder="Nombre del bote" style="width:100%;margin-bottom:8px"/>
+      <input id="boatType" placeholder="Tipo (Lancha, Yate, Velero...)" style="width:100%;margin-bottom:8px"/>
+      <input id="boatCapacity" placeholder="Capacidad (personas)" type="number" style="width:100%;margin-bottom:8px"/>
+      <input id="boatStatus" placeholder="Estado (available/rented/maintenance)" style="width:100%;margin-bottom:12px"/>
+      <div class="price-group">
+        <div><label>Precio por hora</label><input id="priceHour" type="number" step="0.01" placeholder="0.00" style="width:100%"/></div>
+        <div><label>Precio por día</label><input id="priceDay" type="number" step="0.01" placeholder="0.00" style="width:100%"/></div>
+        <div><label>Precio por semana</label><input id="priceWeek" type="number" step="0.01" placeholder="0.00" style="width:100%"/></div>
+        <div><label>Precio por mes</label><input id="priceMonth" type="number" step="0.01" placeholder="0.00" style="width:100%"/></div>
+        <div><label>Precio por año</label><input id="priceYear" type="number" step="0.01" placeholder="0.00" style="width:100%"/></div>
+      </div>
+      <div style="text-align:right;margin-top:16px;">
+        <button class="btn-success" onclick="saveBoat()">Guardar</button>
+        <button class="btn" onclick="closeBoatModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
 
-<script>
-  let currentSection = 'dashboard';
+  <!-- MODAL RESERVAS -->
+  <div id="reservationModal" class="modal-overlay">
+    <div class="modal" style="width:520px">
+      <h3 id="reservationModalTitle">Nueva Reserva</h3>
+      <select id="customerId" style="width:100%;margin-bottom:12px">
+        <option value="">Seleccionar Cliente</option>
+      </select>
+      <select id="boatId" style="width:100%;margin-bottom:12px">
+        <option value="">Seleccionar Bote</option>
+      </select>
+      <input id="startTime" type="datetime-local" style="width:100%;margin-bottom:8px"/>
+      <input id="endTime" type="datetime-local" style="width:100%;margin-bottom:8px"/>
+      <input id="duration" placeholder="Duración (horas)" type="number" step="0.5" style="width:100%;margin-bottom:12px"/>
+      <div id="pricePreview" style="margin:16px 0;padding:12px;background:#f0f9ff;border-radius:8px;display:none;">
+        <strong>Total estimado:</strong> RD$ <span id="totalPrice">0.00</span>
+      </div>
+      <div style="text-align:right;margin-top:10px;">
+        <button class="btn-success" onclick="saveReservation()">Guardar</button>
+        <button class="btn" onclick="closeReservationModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
 
-  function showToast(msg, type = 'success') {
-    const t = document.getElementById('toast');
-    t.textContent = msg;
-    t.className = 'toast ' + type + ' show';
-    setTimeout(() => t.className = 'toast', 4000);
-  }
+  <!-- MODAL FACTURAS -->
+  <div id="invoiceModal" class="modal-overlay">
+    <div class="modal" style="width:520px">
+      <h3 id="invoiceModalTitle">Nueva Factura</h3>
+      <input id="invoiceSubtotal" type="number" placeholder="Subtotal" style="width:100%;margin-bottom:8px"/>
+      <input id="invoiceItbis" type="number" placeholder="ITBIS 18%" style="width:100%;margin-bottom:8px"/>
+      <input id="invoiceTotal" type="number" placeholder="Total" style="width:100%;margin-bottom:12px"/>
+      <select id="paymentMethod" style="width:100%;margin-bottom:12px">
+        <option value="cash">Efectivo</option>
+        <option value="card">Tarjeta</option>
+        <option value="transfer">Transferencia</option>
+      </select>
+      <div style="text-align:right;">
+        <button class="btn-success" onclick="saveInvoice()">Guardar</button>
+        <button class="btn" onclick="closeInvoiceModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
 
-  function closeModal() {
-    document.getElementById('modalOverlay').classList.remove('active');
-  }
+  <div id="toast" class="toast"></div>
 
-  async function loadSection(section) {
-    currentSection = section;
-    document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
-    document.querySelector(\`.menu-item[onclick="loadSection('\${section}')"]\`).classList.add('active');
+  <script>
+    let editingCustomerId = null;
+    let editingBoatId = null;
+    let editingReservationId = null;
+    let editingInvoiceId = null;
+    let charts = {};
 
-    const content = document.getElementById('mainContent');
-    content.innerHTML = '<h2>Cargando ' + section + '...</h2>';
-
-    if (section === 'dashboard') {
-      content.innerHTML = \`
-        <h2>Dashboard</h2>
-        <div style="display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:20px;">
-          <div class="card"><h4>Ingresos Hoy</h4><h2 id="income">$0.00</h2></div>
+    // Dashboard
+    const dashboardHTML = \`
+      <div id="dashboard">
+        <div class="cards">
+          <div class="card"><h4>Ingresos Hoy</h4><h2 id="income">$0</h2></div>
           <div class="card"><h4>Reservas Activas</h4><h2 id="active">0</h2></div>
           <div class="card"><h4>Botes Disponibles</h4><h2 id="boats">0</h2></div>
           <div class="card"><h4>Total Clientes</h4><h2 id="customers">0</h2></div>
         </div>
-        <div class="card">
-          <button class="btn-success" onclick="showToast('Dashboard cargado correctamente', 'success')">Actualizar Datos</button>
-        </div>
-      \`;
-    } else if (section === 'customers') {
-      content.innerHTML = \`
+      </div>
+    \`;
+
+    async function loadDashboard() {
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      document.querySelector('.menu-item[onclick="loadDashboard()"]').classList.add('active');
+      document.getElementById("mainContent").innerHTML = dashboardHTML;
+      showToast("Dashboard cargado", "success");
+    }
+
+    // Clientes
+    async function loadCustomers() {
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      document.querySelector('.menu-item[onclick="loadCustomers()"]').classList.add('active');
+      document.getElementById('mainContent').innerHTML = \`
         <h2>Clientes</h2>
-        <div style="margin-bottom:16px;">
-          <button class="btn-success" onclick="showModal('Nuevo Cliente', 'customer')">+ Nuevo Cliente</button>
-        </div>
-        <div class="card" id="customerList">Cargando clientes...</div>
+        <button class="btn-success" onclick="openCustomerModal()">+ Nuevo Cliente</button>
+        <div id="customerList">Cargando...</div>
       \`;
-      loadCustomers();
-    } else if (section === 'boats') {
-      content.innerHTML = \`
+      showToast("Clientes cargados", "success");
+    }
+
+    // Botes
+    async function loadBoats() {
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      document.querySelector('.menu-item[onclick="loadBoats()"]').classList.add('active');
+      document.getElementById('mainContent').innerHTML = \`
         <h2>Botes</h2>
-        <div style="margin-bottom:16px;">
-          <button class="btn-success" onclick="showModal('Nuevo Bote', 'boat')">+ Nuevo Bote</button>
-        </div>
-        <div class="card" id="boatList">Cargando botes...</div>
+        <button class="btn-success" onclick="openBoatModal()">+ Nuevo Bote</button>
+        <div id="boatList">Cargando...</div>
       \`;
-      loadBoats();
-    } else if (section === 'reservations') {
-      content.innerHTML = \`
+      showToast("Botes cargados", "success");
+    }
+
+    // Reservas
+    async function loadReservations() {
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      document.querySelector('.menu-item[onclick="loadReservations()"]').classList.add('active');
+      document.getElementById('mainContent').innerHTML = \`
         <h2>Reservas</h2>
-        <div style="margin-bottom:16px;">
-          <button class="btn-success" onclick="showModal('Nueva Reserva', 'reservation')">+ Nueva Reserva</button>
-        </div>
-        <div class="card" id="reservationList">Cargando reservas...</div>
+        <button class="btn-success" onclick="openReservationModal()">+ Nueva Reserva</button>
+        <div id="reservationList">Cargando...</div>
       \`;
-      loadReservations();
-    } else if (section === 'invoices') {
-      content.innerHTML = \`
+      showToast("Reservas cargadas", "success");
+    }
+
+    function openReservationModal() {
+      document.getElementById("reservationModal").classList.add("active");
+    }
+
+    function closeReservationModal() {
+      document.getElementById("reservationModal").classList.remove("active");
+    }
+
+    async function saveReservation() {
+      showToast("Reserva guardada (simulación)", "success");
+      closeReservationModal();
+    }
+
+    // Facturación
+    async function loadInvoices() {
+      document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+      document.querySelector('.menu-item[onclick="loadInvoices()"]').classList.add('active');
+      document.getElementById('mainContent').innerHTML = \`
         <h2>Facturación</h2>
-        <div class="card" id="invoiceList">Cargando facturas...</div>
+        <button class="btn-success" onclick="openInvoiceModal()">+ Nueva Factura</button>
+        <div id="invoiceList">Cargando...</div>
       \`;
-      loadInvoices();
-    }
-  }
-
-  async function loadCustomers() {
-    try {
-      const res = await fetch('/api/customers');
-      const data = await res.json();
-      const html = '<table><thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th></th></tr></thead><tbody>' +
-        data.map(c => \`<tr>
-          <td>\${c.full_name}</td>
-          <td>\${c.document_id || '-'}</td>
-          <td>\${c.phone || '-'}</td>
-          <td>\${c.email || '-'}</td>
-          <td><button class="btn-success" onclick="editCustomer(\${c.id})">Editar</button></td>
-        </tr>\`).join('') + '</tbody></table>';
-      document.getElementById('customerList').innerHTML = data.length ? html : '<p>No hay clientes registrados</p>';
-    } catch (e) {
-      document.getElementById('customerList').innerHTML = '<p style="color:#ef4444">Error al cargar clientes</p>';
-    }
-  }
-
-  // Placeholder para las otras secciones (puedes expandirlas igual que customers)
-  async function loadBoats() {
-    document.getElementById('boatList').innerHTML = '<p>Lista de botes (implementar API)</p>';
-  }
-
-  async function loadReservations() {
-    document.getElementById('reservationList').innerHTML = '<p>Lista de reservas (implementar API)</p>';
-  }
-
-  async function loadInvoices() {
-    document.getElementById('invoiceList').innerHTML = '<p>Lista de facturas (implementar API)</p>';
-  }
-
-  function showModal(title, type) {
-    document.getElementById('modalTitle').textContent = title;
-    let body = '';
-
-    if (type === 'customer') {
-      body = \`
-        <div class="form-group"><label>Nombre completo *</label><input id="custName" required></div>
-        <div class="form-group"><label>Documento</label><input id="custDoc"></div>
-        <div class="form-group"><label>Teléfono</label><input id="custPhone"></div>
-        <div class="form-group"><label>Email</label><input id="custEmail" type="email"></div>
-      \`;
-    } else if (type === 'boat') {
-      body = \`
-        <div class="form-group"><label>Nombre *</label><input id="boatName" required></div>
-        <div class="form-group"><label>Tipo</label><input id="boatType"></div>
-        <div class="form-group"><label>Precio por hora</label><input id="boatPrice" type="number" step="0.01"></div>
-      \`;
-    } else if (type === 'reservation') {
-      body = \`
-        <div class="form-group"><label>Cliente *</label><select id="resCustomer" required></select></div>
-        <div class="form-group"><label>Bote *</label><select id="resBoat" required></select></div>
-        <div class="form-group"><label>Fecha inicio *</label><input id="resStart" type="datetime-local" required></div>
-        <div class="form-group"><label>Fecha fin *</label><input id="resEnd" type="datetime-local" required></div>
-      \`;
+      showToast("Facturación cargada", "success");
     }
 
-    document.getElementById('modalBody').innerHTML = body;
-    document.getElementById('modalOverlay').classList.add('active');
-  }
+    function openInvoiceModal() {
+      document.getElementById("invoiceModal").classList.add("active");
+    }
 
-  // Inicio
-  document.addEventListener('DOMContentLoaded', () => {
-    showSection('dashboard');
-  });
-</script>
+    function closeInvoiceModal() {
+      document.getElementById("invoiceModal").classList.remove("active");
+    }
+
+    async function saveInvoice() {
+      showToast("Factura guardada (simulación)", "success");
+      closeInvoiceModal();
+    }
+
+    function openCustomerModal() {
+      document.getElementById("customerModal").classList.add("active");
+    }
+
+    function closeCustomerModal() {
+      document.getElementById("customerModal").classList.remove("active");
+    }
+
+    async function saveCustomer() {
+      showToast("Cliente guardado (simulación)", "success");
+      closeCustomerModal();
+    }
+
+    function openBoatModal() {
+      document.getElementById("boatModal").classList.add("active");
+    }
+
+    function closeBoatModal() {
+      document.getElementById("boatModal").classList.remove("active");
+    }
+
+    async function saveBoat() {
+      showToast("Bote guardado (simulación)", "success");
+      closeBoatModal();
+    }
+
+    // Inicio
+    loadDashboard();
+  </script>
 </body>
-</html>`;
-      return new Response(html, { headers: { "Content-Type": "text/html;charset=UTF-8" } });
-    }
+</html>
+        `;
 
-    return new Response("404 - Página no encontrada", { status: 404 });
+        return new Response(html, {
+          headers: { "Content-Type": "text/html;charset=UTF-8" }
+        });
+      }
+
+      // API DASHBOARD (simulada por ahora)
+      if (url.pathname === "/api/dashboard") {
+        return json({
+          income_today: 12500,
+          active_reservations: 8,
+          available_boats: 5,
+          total_customers: 42
+        });
+      }
+
+      // Rutas API simuladas (puedes conectar a D1 después)
+      if (url.pathname === "/api/customers" && request.method === "GET") {
+        return json([
+          { id: 1, full_name: "Juan Pérez", document_id: "402-1234567-8", phone: "809-555-1234", email: "juan@example.com" }
+        ]);
+      }
+
+      // 404 para cualquier otra ruta
+      return json({ error: "Not Found" }, 404);
+    } catch (err) {
+      return json({ error: err.message || "Error interno" }, 500);
+    }
   }
 };
