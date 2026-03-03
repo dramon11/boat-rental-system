@@ -12,37 +12,158 @@ export default {
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <title>BoatERP • Sistema Completo</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <title>BoatERP • Sistema de Gestión Profesional</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
   <style>
-    :root { --primary:#1e40af; --success:#10b981; --danger:#ef4444; --warning:#f59e0b; --light:#f8fafc; --gray:#64748b; }
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'Inter',sans-serif; background:var(--light); color:#1e2937; }
-    .sidebar { width:280px; height:100vh; background:#0f172a; color:#fff; position:fixed; padding:32px 20px; overflow-y:auto; }
-    .sidebar h2 { font-size:1.9rem; margin-bottom:48px; font-weight:700; }
-    .menu-item { padding:14px 20px; border-radius:12px; margin-bottom:8px; cursor:pointer; display:flex; align-items:center; gap:14px; font-weight:500; transition:.3s; }
-    .menu-item:hover, .menu-item.active { background:var(--primary); }
-    .header { margin-left:280px; height:72px; background:white; box-shadow:0 2px 12px rgba(0,0,0,0.08); display:flex; align-items:center; justify-content:space-between; padding:0 48px; font-weight:600; color:#334155; }
-    .content { margin-left:280px; padding:48px 60px; }
-    h1 { font-size:2.2rem; margin-bottom:32px; color:#1e2937; }
-    .card { background:white; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.07); padding:28px; margin-bottom:32px; }
-    .stats-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:24px; margin-bottom:48px; }
-    .stat-card { background:white; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.07); padding:28px; text-align:center; }
-    .stat-card h4 { margin-bottom:12px; color:var(--gray); font-weight:600; }
-    .stat-card h2 { font-size:2.8rem; color:var(--primary); margin:0; }
-    .charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(480px,1fr)); gap:32px; }
-    .chart-box { background:white; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.07); padding:28px; height:420px; }
-    .full-width { grid-column:1/-1; }
-    .table-container { overflow-x:auto; }
-    .data-table { width:100%; border-collapse:collapse; }
-    .data-table th { background:#f1f5f9; padding:14px; text-align:left; font-weight:600; color:var(--gray); }
-    .data-table td { padding:14px; border-bottom:1px solid #e2e8f0; }
-    .btn { padding:10px 18px; border:none; border-radius:8px; cursor:pointer; font-weight:600; margin-right:8px; }
-    .btn-success { background:var(--success); color:white; }
-    .btn-edit { background:#3b82f6; color:white; }
-    .btn-delete { background:var(--danger); color:white; }
+    :root {
+      --primary: #1e40af;
+      --primary-dark: #1e3a8a;
+      --success: #10b981;
+      --danger: #ef4444;
+      --warning: #f59e0b;
+      --info: #3b82f6;
+      --gray: #64748b;
+      --light: #f8fafc;
+      --dark: #0f172a;
+      --border: #e2e8f0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--light);
+      color: #1e2937;
+      line-height: 1.6;
+    }
+    .sidebar {
+      width: 280px;
+      height: 100vh;
+      background: var(--dark);
+      color: white;
+      position: fixed;
+      padding: 32px 20px;
+      overflow-y: auto;
+    }
+    .sidebar h2 {
+      font-size: 1.9rem;
+      margin-bottom: 48px;
+      font-weight: 700;
+      letter-spacing: -0.5px;
+    }
+    .menu-item {
+      padding: 14px 20px;
+      border-radius: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      font-weight: 500;
+      transition: all 0.3s ease;
+    }
+    .menu-item:hover, .menu-item.active {
+      background: var(--primary);
+      transform: translateX(4px);
+    }
+    .header {
+      margin-left: 280px;
+      height: 72px;
+      background: white;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 48px;
+      font-weight: 600;
+      color: #334155;
+      font-size: 1.1rem;
+    }
+    .content {
+      margin-left: 280px;
+      padding: 48px 60px;
+    }
+    h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      margin-bottom: 40px;
+      color: #1e2937;
+      letter-spacing: -0.5px;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.07);
+      padding: 32px;
+      margin-bottom: 40px;
+    }
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 24px;
+      margin-bottom: 56px;
+    }
+    .stat-card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.07);
+      padding: 32px 24px;
+      text-align: center;
+      transition: transform 0.3s ease;
+    }
+    .stat-card:hover {
+      transform: translateY(-6px);
+    }
+    .stat-card h4 {
+      margin-bottom: 16px;
+      color: var(--gray);
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+    .stat-card h2 {
+      font-size: 3rem;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 0;
+    }
+    .charts-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(480px, 1fr));
+      gap: 32px;
+    }
+    .chart-box {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.07);
+      padding: 32px;
+      height: 460px;
+    }
+    .full-width {
+      grid-column: 1 / -1;
+    }
+    .chart-title {
+      font-size: 1.4rem;
+      font-weight: 600;
+      margin-bottom: 24px;
+      color: #1e2937;
+    }
+    .table-container { overflow-x: auto; }
+    .data-table { width: 100%; border-collapse: collapse; }
+    .data-table th { background: #f1f5f9; padding: 16px; text-align: left; font-weight: 600; color: var(--gray); }
+    .data-table td { padding: 16px; border-bottom: 1px solid #e2e8f0; }
+    .btn {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      margin-right: 8px;
+      transition: all 0.2s;
+    }
+    .btn-success { background: var(--success); color: white; }
+    .btn-edit { background: #3b82f6; color: white; }
+    .btn-delete { background: var(--danger); color: white; }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
     .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.65); justify-content:center; align-items:center; z-index:9999; }
     .modal-overlay.active { display:flex; }
     .modal { background:white; border-radius:16px; width:680px; max-width:94vw; padding:36px; max-height:92vh; overflow-y:auto; }
@@ -52,8 +173,9 @@ export default {
     .toast.error { background:var(--danger); }
     .form-group { margin-bottom:20px; }
     .form-group label { display:block; margin-bottom:8px; font-weight:500; color:#475569; }
-    .form-group input, .form-group select { width:100%; padding:12px 16px; border:1px solid #cbd5e1; border-radius:8px; font-size:1rem; }
-    .price-info { font-size:1.3rem; font-weight:600; color:var(--primary); margin:16px 0; }
+    .form-group input, .form-group select { width:100%; padding:12px 16px; border:1px solid #cbd5e1; border-radius:8px; font-size:1rem; transition:0.2s; }
+    .form-group input:focus, .form-group select:focus { outline:none; border-color:var(--primary); box-shadow:0 0 0 3px rgba(30,64,175,0.1); }
+    .price-info { font-size:1.4rem; font-weight:700; color:var(--primary); margin:20px 0; text-align:center; }
   </style>
 </head>
 <body>
@@ -85,7 +207,7 @@ function showToast(msg, type = "success") {
   const t = document.getElementById("toast");
   t.textContent = msg;
   t.className = "toast " + type + " show";
-  setTimeout(() => t.className = "toast", 4000);
+  setTimeout(() => { t.className = "toast"; }, 4000);
 }
 
 async function api(method, path, body = null) {
@@ -113,10 +235,10 @@ async function loadView(view) {
   else if (view === "invoices") await loadInvoices(content);
 }
 
-// Dashboard con gráficos más coloridos
+// Dashboard profesional con gráficos mejorados y coloridos
 async function loadDashboard(content) {
   content.innerHTML = \`
-    <h1>Dashboard</h1>
+    <h1>Dashboard Ejecutivo</h1>
     <div class="stats-grid">
       <div class="stat-card"><h4>Ingresos Hoy</h4><h2 id="inc">$0</h2></div>
       <div class="stat-card"><h4>Reservas Activas</h4><h2 id="act">0</h2></div>
@@ -124,11 +246,26 @@ async function loadDashboard(content) {
       <div class="stat-card"><h4>Clientes Totales</h4><h2 id="cust">0</h2></div>
     </div>
     <div class="charts-grid">
-      <div class="chart-box"><h3>Ingresos Mensuales (Barras)</h3><canvas id="barChart"></canvas></div>
-      <div class="chart-box"><h3>Reservas por Mes (Línea)</h3><canvas id="lineChart"></canvas></div>
-      <div class="chart-box"><h3>Distribución de Estados (Pie)</h3><canvas id="pieChart"></canvas></div>
-      <div class="chart-box"><h3>Botes Disponibles vs Ocupados (Barras)</h3><canvas id="boatsChart"></canvas></div>
-      <div class="chart-box"><h3>Clientes Registrados (Dona)</h3><canvas id="customersChart"></canvas></div>
+      <div class="chart-box">
+        <div class="chart-title">Ingresos Mensuales</div>
+        <canvas id="barChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <div class="chart-title">Tendencia de Reservas</div>
+        <canvas id="lineChart"></canvas>
+      </div>
+      <div class="chart-box full-width">
+        <div class="chart-title">Distribución de Estados de Reservas</div>
+        <canvas id="pieChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <div class="chart-title">Botes Disponibles vs Ocupados</div>
+        <canvas id="boatsChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <div class="chart-title">Base de Clientes</div>
+        <canvas id="customersChart"></canvas>
+      </div>
     </div>
   \`;
 
@@ -145,24 +282,39 @@ async function loadDashboard(content) {
     document.getElementById("boats").textContent = counts.available_boats;
     document.getElementById("cust").textContent = counts.total_customers;
 
-    // Colores más vibrantes y coloridos
-    const vibrantColors = [
-      '#6366f1', '#8b5cf6', '#d946ef', '#ec4899', '#f43f5e', '#f97316',
-      '#f59e0b', '#eab308', '#84cc16', '#22c55e', '#10b981', '#06b6d4'
-    ];
+    // Colores profesionales y vibrantes
+    const barGradient = (ctx) => {
+      const gradient = ctx.chart.ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, 'rgba(59,130,246,0.8)');
+      gradient.addColorStop(1, 'rgba(30,64,175,0.4)');
+      return gradient;
+    };
 
     charts.bar = new Chart(document.getElementById('barChart'), {
       type: 'bar',
       data: {
         labels: incomeMonthly.map(r => r.month || 'Sin datos'),
         datasets: [{
-          label: 'Ingresos RD$',
+          label: 'Ingresos Mensuales (RD$)',
           data: incomeMonthly.map(r => Number(r.total||0)),
-          backgroundColor: vibrantColors.slice(0, incomeMonthly.length),
+          backgroundColor: barGradient,
+          borderColor: '#3b82f6',
+          borderWidth: 2,
           borderRadius: 8
         }]
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 14, weight: 600 } } },
+          tooltip: { backgroundColor: 'rgba(30,64,175,0.9)', titleFont: { size: 14 }, bodyFont: { size: 13 } }
+        },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#e2e8f0' } },
+          x: { grid: { display: false } }
+        }
+      }
     });
 
     charts.line = new Chart(document.getElementById('lineChart'), {
@@ -170,18 +322,31 @@ async function loadDashboard(content) {
       data: {
         labels: resMonthly.map(r => r.month || 'Sin datos'),
         datasets: [{
-          label: 'Reservas',
+          label: 'Número de Reservas',
           data: resMonthly.map(r => Number(r.count||0)),
-          borderColor: '#22c55e',
-          backgroundColor: 'rgba(34,197,94,0.3)',
+          borderColor: '#10b981',
+          backgroundColor: 'rgba(16,185,129,0.25)',
           tension: 0.4,
           fill: true,
-          pointBackgroundColor: '#22c55e',
+          pointBackgroundColor: '#10b981',
           pointBorderColor: '#fff',
-          pointRadius: 6
+          pointBorderWidth: 2,
+          pointRadius: 6,
+          pointHoverRadius: 8
         }]
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 14, weight: 600 } } },
+          tooltip: { backgroundColor: 'rgba(16,185,129,0.9)', titleFont: { size: 14 }, bodyFont: { size: 13 } }
+        },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#e2e8f0' } },
+          x: { grid: { display: false } }
+        }
+      }
     });
 
     charts.pie = new Chart(document.getElementById('pieChart'), {
@@ -190,43 +355,69 @@ async function loadDashboard(content) {
         labels: resStatus.map(r => r.status || 'Desconocido'),
         datasets: [{
           data: resStatus.map(r => Number(r.count||0)),
-          backgroundColor: vibrantColors,
-          borderWidth: 2,
-          borderColor: '#fff'
+          backgroundColor: ['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ef4444', '#6b7280', '#f97316'],
+          borderWidth: 3,
+          borderColor: '#ffffff'
         }]
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right', labels: { font: { size: 14 } } } } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'right', labels: { font: { size: 14, weight: 500 }, padding: 20 } },
+          tooltip: { backgroundColor: 'rgba(30,64,175,0.92)', titleFont: { size: 14 }, bodyFont: { size: 13 } }
+        },
+        cutout: '60%'
+      }
     });
 
-    // Barras coloridas para Botes Disponibles vs Ocupados
+    // Barras vibrantes para Botes Disponibles vs Ocupados
     const boatsTotal = (await api("GET", "/api/boats")).length || 1;
     charts.boats = new Chart(document.getElementById('boatsChart'), {
       type: 'bar',
       data: {
         labels: ['Disponibles', 'Ocupados / Mantenimiento'],
         datasets: [{
-          label: 'Cantidad de Botes',
+          label: 'Estado de Flota',
           data: [counts.available_boats || 0, boatsTotal - (counts.available_boats || 0)],
           backgroundColor: ['#22c55e', '#ef4444'],
-          borderRadius: 8
+          borderRadius: 8,
+          borderSkipped: false
         }]
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { beginAtZero: true, grid: { color: '#e2e8f0' } },
+          x: { grid: { display: false } }
+        }
+      }
     });
 
-    // Dona colorida para Clientes Totales
+    // Dona elegante para Clientes Totales
     charts.customers = new Chart(document.getElementById('customersChart'), {
       type: 'doughnut',
       data: {
-        labels: ['Clientes Registrados', 'Otros'],
+        labels: ['Clientes Activos', 'Base Total'],
         datasets: [{
           data: [counts.total_customers || 0, 0],
           backgroundColor: ['#6366f1', '#e2e8f0'],
-          borderWidth: 3,
-          borderColor: '#fff'
+          borderWidth: 4,
+          borderColor: '#ffffff',
+          hoverOffset: 20
         }]
       },
-      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'bottom', labels: { font: { size: 14, weight: 500 } } },
+          tooltip: { backgroundColor: 'rgba(99,102,241,0.92)', titleFont: { size: 14 }, bodyFont: { size: 13 } }
+        },
+        cutout: '70%'
+      }
     });
   } catch(e) {
     showToast("Error al cargar dashboard o gráficos", "error");
@@ -234,19 +425,19 @@ async function loadDashboard(content) {
   }
 }
 
-// (Aquí van todas las demás funciones que ya tenías sin cambios: loadCustomers, openCustomerModal, saveCustomer, loadBoats, openBoatModal, saveBoat, loadReservations, openReservationModal, calcReservationPrice, saveReservation, loadInvoices, closeModal, deleteItem, etc.)
+// (Mantén aquí todas las demás funciones que ya tenías sin cambios: loadCustomers, openCustomerModal, saveCustomer, loadBoats, openBoatModal, saveBoat, loadReservations, openReservationModal, calcReservationPrice, saveReservation, loadInvoices, closeModal, deleteItem, etc.)
 
 function closeModal() {
   document.getElementById("modal").classList.remove("active");
 }
 
 async function deleteItem(table, id) {
-  if (!confirm("¿Eliminar este registro?")) return;
+  if (!confirm("¿Eliminar este registro? Esta acción es irreversible.")) return;
   try {
     await api("DELETE", "/api/" + table + "/" + id);
-    showToast("Eliminado correctamente", "success");
+    showToast("Registro eliminado correctamente", "success");
     loadView(table);
-  } catch(e) { showToast("Error al eliminar", "error"); }
+  } catch(e) { showToast("No se pudo eliminar el registro", "error"); }
 }
 
 // Inicio
