@@ -1041,10 +1041,7 @@ if (url.pathname.startsWith("/api/invoices")) {
     }
   }
 
-     return json({error:"Not Found"},404);
-    } catch(err){
-      return json({error:err.message},500);
-    }
-  }
+    return json({ success: false, error: "Método no permitido" }, 405);
 }
+
 
