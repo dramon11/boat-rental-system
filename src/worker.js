@@ -285,6 +285,138 @@ export default {
 
     } catch (err) {
       return json({ error: err.message }, 500);
+    // API FACTURAS - Versión profesional y segura
+if (url.pathname.startsWith("/api/invoices")) {
+  const pathParts = url.pathname.split('/');
+  const id = pathParts.length > 2 ? pathParts[2] : null;
+
+  if (request.method === "GET") {
+    try {
+      const rows = await env.DB.prepare(`
+        SELECT 
+          i.id,
+          i.invoice_number,
+          i.reservation_id,
+          i.subtotal,
+          i.itbis,
+          i.total,
+          i.payment_method,
+          i.payment_status,
+          i.created_at,
+          i.notes,
+          r.reservation_number,
+          c.full_name AS customer_name,
+          b.name AS boat_name
+        FROM invoices i
+        LEFT JOIN reservations r ON i.reservation_id = r.id
+        LEFT JOIN customers c ON r.customer_id = c.id
+        LEFT JOIN boats b ON r.boat_id = b.id
+        ORDER BY i.created_at DESC
+      `).all();
+
+      return json({
+        success: true,
+        data: rows.results || []
+      });
+    } catch (e) {
+      return json({ success: false, error: "Error al obtener facturas: " + e.message }, 500);
     }
   }
-};
+
+  if (request.method === "POST") {
+    try {
+      const body = await request.json();
+
+      // Validación mínima
+      if (!body.reservation_id) {
+        return json({ success: false, error: "reservation_id es obligatorio" }, 400);
+      }
+      if (body.subtotal == null || body.itbis == null || body.total == null) {
+        return json({ success: false, error: "subtotal, itbis y total son obligatorios" }, 400);
+      }
+
+      const stmt = await env.DB.prepare(`
+        INSERT INTO invoices (
+          reservation_id,
+          subtotal,
+          itbis,
+          total,
+          payment_method,
+          payment_status,
+          notes
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+        RETURNING id, invoice_number
+      `);
+
+      const result = await stmt.bind(
+        body.reservation_id,
+        body.subtotal,
+        body.itbis,
+        body.total,
+        body.payment_method || 'cash',
+        body.payment_status || 'pending',
+        body.notes || null
+      ).first();
+
+      return json({
+        success: true,
+        message: "Factura creada correctamente",
+        data: {
+          id: result.id,
+          invoice_number: result.invoice_number
+        }
+      }, 201);
+    } catch (e) {
+      return json({ success: false, error: "Error al crear factura: " + e.message }, 500);
+    }
+  }
+
+  if (request.method === "PUT" && id) {
+    try {
+      const body = await request.json();
+
+      const exists = await env.DB.prepare("SELECT 1 FROM invoices WHERE id = ?").bind(id).first();
+      if (!exists) return json({ success: false, error: "Factura no encontrada" }, 404);
+
+      await env.DB.prepare(`
+        UPDATE invoices SET
+          subtotal = ?,
+          itbis = ?,
+          total = ?,
+          payment_method = ?,
+          payment_status = ?,
+          notes = ?,
+          updated_at = datetime('now')
+        WHERE id = ?
+      `).bind(
+        body.subtotal ?? 0,
+        body.itbis ?? 0,
+        body.total ?? 0,
+        body.payment_method || 'cash',
+        body.payment_status || 'pending',
+        body.notes || null,
+        id
+      ).run();
+
+      return json({ success: true, message: "Factura actualizada" });
+    } catch (e) {
+      return json({ success: false, error: "Error al actualizar factura: " + e.message }, 500);
+    }
+  }
+
+  if (request.method === "DELETE" && id) {
+    try {
+      const exists = await env.DB.prepare("SELECT 1 FROM invoices WHERE id = ?").bind(id).first();
+      if (!exists) return json({ success: false, error: "Factura no encontrada" }, 404);
+
+      await env.DB.prepare("DELETE FROM invoices WHERE id = ?").bind(id).run();
+      return json({ success: true, message: "Factura eliminada" });
+    } catch (e) {
+      return json({ success: false, error: "Error al eliminar factura: " + e.message }, 500);
+    }
+  }
+
+  return json({ success: false, error: "Método no permitido" }, 405);
+}
+      };
+      
