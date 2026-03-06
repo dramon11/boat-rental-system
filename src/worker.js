@@ -1,24 +1,27 @@
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    const json = (data, status = 200) => new Response(JSON.stringify(data), {
+
+    const json = (data, status = 200) => new Response(JSON.stringify(data, null, 2), {
       status,
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json;charset=UTF-8" }
     });
 
+    // Página principal - HTML + JS completo
     if (url.pathname === "/" && request.method === "GET") {
-      const html = `<!DOCTYPE html>
+      return new Response(`
+<!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BoatERP • Sistema Completo</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
-    :root { --primary:#1e40af; --success:#10b981; --danger:#ef4444; --warning:#f59e0b; --light:#f8fafc; --gray:#64748b; }
-    * { box-sizing:border-box; margin:0; padding:0; }
-    body { font-family:'Inter',sans-serif; background:var(--light); color:#1e2937; }
+    :root { --primary:#1e40af; --success:#10b981; --danger:#ef4444; --light:#f8fafc; --gray:#64748b; }
+    body { font-family:'Inter',sans-serif; background:var(--light); color:#1e2937; margin:0; }
     .sidebar { width:280px; height:100vh; background:#0f172a; color:#fff; position:fixed; padding:32px 20px; overflow-y:auto; }
     .sidebar h2 { font-size:1.9rem; margin-bottom:48px; font-weight:700; }
     .menu-item { padding:14px 20px; border-radius:12px; margin-bottom:8px; cursor:pointer; display:flex; align-items:center; gap:14px; font-weight:500; transition:.3s; }
@@ -31,13 +34,6 @@ export default {
     .stat-card { background:white; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.07); padding:28px; text-align:center; }
     .stat-card h4 { margin-bottom:12px; color:var(--gray); font-weight:600; }
     .stat-card h2 { font-size:2.8rem; color:var(--primary); margin:0; }
-    .charts-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(480px,1fr)); gap:32px; }
-    .chart-box { background:white; border-radius:16px; box-shadow:0 10px 30px rgba(0,0,0,0.07); padding:28px; height:420px; }
-    .full-width { grid-column:1/-1; }
-    .table-container { overflow-x:auto; }
-    .data-table { width:100%; border-collapse:collapse; }
-    .data-table th { background:#f1f5f9; padding:14px; text-align:left; font-weight:600; color:var(--gray); }
-    .data-table td { padding:14px; border-bottom:1px solid #e2e8f0; }
     .btn { padding:10px 18px; border:none; border-radius:8px; cursor:pointer; font-weight:600; margin-right:8px; }
     .btn-success { background:var(--success); color:white; }
     .btn-edit { background:#3b82f6; color:white; }
@@ -82,14 +78,23 @@ function showToast(msg, type = "success") {
   setTimeout(() => t.className = "toast", 4000);
 }
 async function api(method, path, body = null) {
-  const opts = { method, headers: {} };
-  if (body) {
-    opts.headers["Content-Type"] = "application/json";
-    opts.body = JSON.stringify(body);
+  try {
+    const opts = { method, headers: {} };
+    if (body) {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(body);
+    }
+    const res = await fetch(path, opts);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(errText || res.statusText);
+    }
+    return await res.json();
+  } catch (e) {
+    showToast("Error en " + path + ": " + e.message, "error");
+    console.error(e);
+    throw e;
   }
-  const res = await fetch(path, opts);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
 }
 async function loadView(view) {
   currentView = view;
@@ -102,54 +107,180 @@ async function loadView(view) {
   else if (view === "reservations") await loadReservations(content);
   else if (view === "invoices") await loadInvoices(content);
 }
-// Dashboard (sin cambios)
+// Dashboard - simplificado para evitar problemas de carga
 async function loadDashboard(content) {
   content.innerHTML = \`
-    <h1>Dashboard Ejecutivo</h1>
+    <h1>Dashboard</h1>
     <div class="stats-grid">
       <div class="stat-card"><h4>Ingresos Hoy</h4><h2 id="inc">$0</h2></div>
       <div class="stat-card"><h4>Reservas Activas</h4><h2 id="act">0</h2></div>
       <div class="stat-card"><h4>Botes Disponibles</h4><h2 id="boats">0</h2></div>
       <div class="stat-card"><h4>Clientes Totales</h4><h2 id="cust">0</h2></div>
     </div>
-    <div class="charts-grid">
-      <div class="chart-box"><canvas id="barChart"></canvas></div>
-      <div class="chart-box"><canvas id="lineChart"></canvas></div>
-      <div class="chart-box full-width"><canvas id="pieChart"></canvas></div>
+    <p>Si ves esto, el Worker responde correctamente.</p>
+  \`;
+  try {
+    const counts = await api("GET", "/api/dashboard");
+    document.getElementById("inc").textContent = "$" + Number(counts.income_today || 0).toLocaleString();
+    document.getElementById("act").textContent = counts.active_reservations || 0;
+    document.getElementById("boats").textContent = counts.available_boats || 0;
+    document.getElementById("cust").textContent = counts.total_customers || 0;
+  } catch (e) {
+    showToast("Error cargando datos del dashboard", "error");
+  }
+}
+// Clientes - completo
+async function loadCustomers(content) {
+  content.innerHTML = \`
+    <h1>Clientes</h1>
+    <button class="btn btn-success" onclick="openCustomerModal()">+ Nuevo Cliente</button>
+    <div class="card table-container">
+      <table class="data-table">
+        <thead><tr><th>Nombre</th><th>Documento</th><th>Teléfono</th><th>Email</th><th>Acciones</th></tr></thead>
+        <tbody id="custBody"></tbody>
+      </table>
     </div>
   \`;
   try {
-    const [counts, incomeMonthly, resMonthly, resStatus] = await Promise.all([
-      api("GET", "/api/dashboard"),
-      api("GET", "/api/income-monthly"),
-      api("GET", "/api/reservations-monthly"),
-      api("GET", "/api/reservations-status")
-    ]);
-    document.getElementById("inc").textContent = "$" + Number(counts.income_today || 0).toLocaleString();
-    document.getElementById("act").textContent = counts.active_reservations;
-    document.getElementById("boats").textContent = counts.available_boats;
-    document.getElementById("cust").textContent = counts.total_customers;
-    // Gráficos (simplificados para evitar errores de carga)
-    new Chart(document.getElementById('barChart'), { type: 'bar', data: { labels: ['Ene','Feb','Mar'], datasets: [{ data: [12000,18000,15000] }] }, options: { responsive: true } });
-    new Chart(document.getElementById('lineChart'), { type: 'line', data: { labels: ['Ene','Feb','Mar'], datasets: [{ data: [5,8,12] }] }, options: { responsive: true } });
-    new Chart(document.getElementById('pieChart'), { type: 'pie', data: { labels: ['Pendiente','Confirmada','Pagada'], datasets: [{ data: [10,5,3] }] }, options: { responsive: true } });
-  } catch(e) {
-    showToast("Error al cargar dashboard", "error");
+    const data = await api("GET", "/api/customers");
+    const tbody = document.getElementById("custBody");
+    tbody.innerHTML = data.length ? "" : '<tr><td colspan="5">No hay clientes</td></tr>';
+    data.forEach(c => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = \`
+        <td>\${c.full_name || '-'}</td>
+        <td>\${c.document_id || '-'}</td>
+        <td>\${c.phone || '-'}</td>
+        <td>\${c.email || '-'}</td>
+        <td>
+          <button class="btn btn-edit" onclick="openCustomerModal(\${c.id})">Editar</button>
+          <button class="btn btn-delete" onclick="deleteItem('customers', \${c.id})">Eliminar</button>
+        </td>
+      \`;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    showToast("Error cargando clientes", "error");
   }
 }
-// Clientes - sin cambios
-async function loadCustomers(content) {
-  // ... (mantener tu versión original que funcionaba)
+async function openCustomerModal(id = null) {
+  const title = id ? 'Editar Cliente' : 'Nuevo Cliente';
+  let data = { full_name: '', document_id: '', phone: '', email: '' };
+  if (id) data = await api("GET", "/api/customers/" + id) || data;
+  document.getElementById("modalContent").innerHTML = \`
+    <h2>\${title}</h2>
+    <div class="form-group"><label>Nombre completo</label><input id="c_name" value="\${data.full_name || ''}"></div>
+    <div class="form-group"><label>Documento</label><input id="c_doc" value="\${data.document_id || ''}"></div>
+    <div class="form-group"><label>Teléfono</label><input id="c_phone" value="\${data.phone || ''}"></div>
+    <div class="form-group"><label>Email</label><input id="c_email" value="\${data.email || ''}"></div>
+    <div style="text-align:right; margin-top:24px;">
+      <button class="btn btn-success" onclick="saveCustomer(\${id||''})">Guardar</button>
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+    </div>
+  \`;
+  document.getElementById("modal").classList.add("active");
 }
-// Botes - sin cambios
+async function saveCustomer(id) {
+  const body = {
+    full_name: document.getElementById("c_name").value.trim(),
+    document_id: document.getElementById("c_doc").value.trim(),
+    phone: document.getElementById("c_phone").value.trim(),
+    email: document.getElementById("c_email").value.trim()
+  };
+  if (!body.full_name) return showToast("Nombre obligatorio", "error");
+  try {
+    const method = id ? "PUT" : "POST";
+    const path = id ? "/api/customers/" + id : "/api/customers";
+    await api(method, path, body);
+    showToast("Cliente guardado", "success");
+    closeModal();
+    loadView("customers");
+  } catch (e) {
+    showToast("Error al guardar cliente", "error");
+  }
+}
+// Botes - completo (similar a clientes)
 async function loadBoats(content) {
-  // ... (mantener tu versión original)
+  content.innerHTML = \`
+    <h1>Botes</h1>
+    <button class="btn btn-success" onclick="openBoatModal()">+ Nuevo Bote</button>
+    <div class="card table-container">
+      <table class="data-table">
+        <thead><tr><th>Nombre</th><th>Tipo</th><th>Capacidad</th><th>Precio/h</th><th>Estado</th><th>Acciones</th></tr></thead>
+        <tbody id="boatBody"></tbody>
+      </table>
+    </div>
+  \`;
+  try {
+    const data = await api("GET", "/api/boats");
+    const tbody = document.getElementById("boatBody");
+    tbody.innerHTML = data.length ? "" : '<tr><td colspan="6">No hay botes</td></tr>';
+    data.forEach(b => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = \`
+        <td>\${b.name || '-'}</td>
+        <td>\${b.type || '-'}</td>
+        <td>\${b.capacity || '-'}</td>
+        <td>RD$ \${Number(b.price_per_hour||0).toFixed(2)}</td>
+        <td>\${b.status || 'available'}</td>
+        <td>
+          <button class="btn btn-edit" onclick="openBoatModal(\${b.id})">Editar</button>
+          <button class="btn btn-delete" onclick="deleteItem('boats', \${b.id})">Eliminar</button>
+        </td>
+      \`;
+      tbody.appendChild(tr);
+    });
+  } catch (e) {
+    showToast("Error cargando botes", "error");
+  }
 }
-// Reservas - CORREGIDO con anticipo y saldo
+async function openBoatModal(id = null) {
+  const title = id ? 'Editar Bote' : 'Nuevo Bote';
+  let data = { name: '', type: '', capacity: '', status: 'available', price_per_hour: '' };
+  if (id) data = await api("GET", "/api/boats/" + id) || data;
+  document.getElementById("modalContent").innerHTML = \`
+    <h2>\${title}</h2>
+    <div class="form-group"><label>Nombre del bote</label><input id="b_name" value="\${data.name || ''}"></div>
+    <div class="form-group"><label>Tipo</label><input id="b_type" value="\${data.type || ''}"></div>
+    <div class="form-group"><label>Capacidad</label><input id="b_capacity" type="number" value="\${data.capacity || ''}"></div>
+    <div class="form-group"><label>Estado</label><select id="b_status">
+      <option value="available" \${data.status==='available'?'selected':''}>Disponible</option>
+      <option value="rented" \${data.status==='rented'?'selected':''}>Alquilado</option>
+      <option value="maintenance" \${data.status==='maintenance'?'selected':''}>Mantenimiento</option>
+    </select></div>
+    <div class="form-group"><label>Precio por hora (RD$)</label><input id="b_price" type="number" step="0.01" value="\${data.price_per_hour || ''}"></div>
+    <div style="text-align:right; margin-top:24px;">
+      <button class="btn btn-success" onclick="saveBoat(\${id||''})">Guardar</button>
+      <button class="btn" onclick="closeModal()">Cancelar</button>
+    </div>
+  \`;
+  document.getElementById("modal").classList.add("active");
+}
+async function saveBoat(id) {
+  const body = {
+    name: document.getElementById("b_name").value.trim(),
+    type: document.getElementById("b_type").value.trim(),
+    capacity: parseInt(document.getElementById("b_capacity").value) || 0,
+    status: document.getElementById("b_status").value,
+    price_per_hour: parseFloat(document.getElementById("b_price").value) || 0
+  };
+  if (!body.name) return showToast("Nombre del bote es obligatorio", "error");
+  try {
+    const method = id ? "PUT" : "POST";
+    const path = id ? "/api/boats/" + id : "/api/boats";
+    await api(method, path, body);
+    showToast("Bote guardado", "success");
+    closeModal();
+    loadView("boats");
+  } catch (e) {
+    showToast("Error al guardar bote", "error");
+  }
+}
+// Reservas - con anticipo y saldo visible
 async function loadReservations(content) {
   content.innerHTML = \`
     <h1>Reservas</h1>
-    <button class="btn btn-success" style="margin-bottom:24px;" onclick="openReservationModal()">+ Nueva Reserva</button>
+    <button class="btn btn-success" onclick="openReservationModal()">+ Nueva Reserva</button>
     <div class="card table-container">
       <table class="data-table">
         <thead>
@@ -180,17 +311,19 @@ async function loadReservations(content) {
         <td>\${r.status}</td>
         <td>
           <button class="btn btn-edit" onclick="openReservationModal(\${r.id})">Editar</button>
-          <button class="btn btn-delete" onclick="deleteItem('reservations',\${r.id})">Eliminar</button>
+          <button class="btn btn-delete" onclick="deleteItem('reservations', \${r.id})">Eliminar</button>
         </td>
       \`;
       tbody.appendChild(tr);
     });
-  } catch(e) { showToast("Error cargando reservas", "error"); }
+  } catch (e) {
+    showToast("Error cargando reservas: " + e.message, "error");
+  }
 }
 async function openReservationModal(id = null) {
-  let title = id ? 'Editar Reserva' : 'Nueva Reserva';
+  const title = id ? 'Editar Reserva' : 'Nueva Reserva';
   let data = { customer_id: '', boat_id: '', start_time: '', end_time: '', deposit_amount: 0 };
-  if (id) data = await api("GET", "/api/reservations/" + id).catch(() => data);
+  if (id) data = await api("GET", "/api/reservations/" + id) || data;
   document.getElementById("modalContent").innerHTML = \`
     <h2>\${title}</h2>
     <div class="form-group"><label>Cliente</label><select id="r_customer"></select></div>
@@ -206,27 +339,31 @@ async function openReservationModal(id = null) {
       <button class="btn" onclick="closeModal()">Cancelar</button>
     </div>
   \`;
-  const customers = await api("GET", "/api/customers");
-  const boats = await api("GET", "/api/boats");
-  const custSel = document.getElementById("r_customer");
-  const boatSel = document.getElementById("r_boat");
-  custSel.innerHTML = '<option value="">Seleccionar cliente...</option>';
-  customers.forEach(c => {
-    const opt = document.createElement("option");
-    opt.value = c.id;
-    opt.textContent = c.full_name;
-    if (c.id == data.customer_id) opt.selected = true;
-    custSel.appendChild(opt);
-  });
-  boatSel.innerHTML = '<option value="">Seleccionar bote...</option>';
-  boats.forEach(b => {
-    const opt = document.createElement("option");
-    opt.value = b.id;
-    opt.textContent = b.name + " - RD$" + Number(b.price_per_hour||0).toFixed(0) + "/h";
-    opt.dataset.price = b.price_per_hour || 0;
-    if (b.id == data.boat_id) opt.selected = true;
-    boatSel.appendChild(opt);
-  });
+  try {
+    const customers = await api("GET", "/api/customers");
+    const boats = await api("GET", "/api/boats");
+    const custSel = document.getElementById("r_customer");
+    const boatSel = document.getElementById("r_boat");
+    custSel.innerHTML = '<option value="">Seleccionar cliente...</option>';
+    customers.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.full_name;
+      if (c.id == data.customer_id) opt.selected = true;
+      custSel.appendChild(opt);
+    });
+    boatSel.innerHTML = '<option value="">Seleccionar bote...</option>';
+    boats.forEach(b => {
+      const opt = document.createElement("option");
+      opt.value = b.id;
+      opt.textContent = b.name + " - RD$" + Number(b.price_per_hour||0).toFixed(0) + "/h";
+      opt.dataset.price = b.price_per_hour || 0;
+      if (b.id == data.boat_id) opt.selected = true;
+      boatSel.appendChild(opt);
+    });
+  } catch (e) {
+    showToast("Error cargando listas", "error");
+  }
   document.getElementById("modal").classList.add("active");
   calcReservationPrice();
 }
@@ -242,7 +379,10 @@ function calcReservationPrice() {
     return;
   }
   const ms = new Date(end) - new Date(start);
-  if (ms <= 0) return showToast("Fecha final debe ser posterior", "error");
+  if (ms <= 0) {
+    showToast("Fecha final debe ser posterior", "error");
+    return;
+  }
   const hours = (ms / 3600000).toFixed(1);
   const price = Number(boat.dataset.price || 0);
   const total = hours * price;
@@ -265,18 +405,20 @@ async function saveReservation(id) {
     balance_due: balance
   };
   if (!body.customer_id || !body.boat_id || !body.start_time || !body.end_time) {
-    return showToast("Complete todos los campos", "error");
+    return showToast("Complete todos los campos obligatorios", "error");
   }
   try {
     const method = id ? "PUT" : "POST";
     const path = id ? "/api/reservations/" + id : "/api/reservations";
     await api(method, path, body);
-    showToast("Reserva guardada con éxito", "success");
+    showToast("Reserva guardada correctamente", "success");
     closeModal();
     loadView("reservations");
-  } catch(e) { showToast("Error al guardar reserva: " + e.message, "error"); }
+  } catch (e) {
+    showToast("Error al guardar reserva: " + e.message, "error");
+  }
 }
-// Facturación - MÓDULO COMPLETO Y FUNCIONAL
+// Facturación - completa y funcional
 async function loadInvoices(content) {
   content.innerHTML = \`
     <h1>Facturación</h1>
@@ -301,7 +443,7 @@ async function loadInvoices(content) {
   try {
     const data = await api("GET", "/api/invoices?full=true");
     const tbody = document.getElementById("invBody");
-    tbody.innerHTML = data.length ? "" : '<tr><td colspan="7" style="text-align:center;padding:40px;">No hay facturas registradas</td></tr>';
+    tbody.innerHTML = data.length ? "" : '<tr><td colspan="7" style="text-align:center">No hay facturas registradas</td></tr>';
     data.forEach(i => {
       const tr = document.createElement("tr");
       tr.innerHTML = \`
@@ -315,7 +457,9 @@ async function loadInvoices(content) {
       \`;
       tbody.appendChild(tr);
     });
-  } catch(e) { showToast("Error cargando facturas: " + e.message, "error"); }
+  } catch (e) {
+    showToast("Error cargando facturas: " + e.message, "error");
+  }
 }
 async function openInvoiceModal() {
   document.getElementById("modalContent").innerHTML = \`
@@ -392,11 +536,13 @@ async function deleteItem(table, id) {
 loadView("dashboard");
 </script>
 </body>
-</html>`;
-      return new Response(html, { headers: { "Content-Type": "text/html;charset=UTF-8" } });
+</html>
+      `, {
+        headers: { "Content-Type": "text/html;charset=UTF-8" }
+      });
     }
 
-    // API endpoints (con soporte completo para anticipo y actualización de saldo)
+    // API ENDPOINTS - con soporte completo para anticipo y actualización de saldo
     if (url.pathname === "/api/dashboard") {
       let income_today = 0, active = 0, boats = 0, customers = 0;
       try { income_today = (await env.DB.prepare("SELECT COALESCE(SUM(amount_paid),0) s FROM invoices WHERE DATE(created_at)=DATE('now')").first())?.s ?? 0; } catch {}
@@ -415,12 +561,14 @@ loadView("dashboard");
       }
       if (request.method === "POST") {
         const b = await request.json();
-        await env.DB.prepare("INSERT INTO customers (full_name,document_id,phone,email) VALUES (?,?,?,?)").bind(b.full_name, b.document_id, b.phone, b.email).run();
+        await env.DB.prepare("INSERT INTO customers (full_name,document_id,phone,email) VALUES (?,?,?,?)")
+          .bind(b.full_name, b.document_id, b.phone, b.email).run();
         return json({ success: true });
       }
       if (request.method === "PUT" && id) {
         const b = await request.json();
-        await env.DB.prepare("UPDATE customers SET full_name=?,document_id=?,phone=?,email=? WHERE id=?").bind(b.full_name, b.document_id, b.phone, b.email, id).run();
+        await env.DB.prepare("UPDATE customers SET full_name=?,document_id=?,phone=?,email=? WHERE id=?")
+          .bind(b.full_name, b.document_id, b.phone, b.email, id).run();
         return json({ success: true });
       }
       if (request.method === "DELETE" && id) {
@@ -438,12 +586,14 @@ loadView("dashboard");
       }
       if (request.method === "POST") {
         const b = await request.json();
-        await env.DB.prepare("INSERT INTO boats (name,type,capacity,status,price_per_hour) VALUES (?,?,?,?,?)").bind(b.name, b.type, b.capacity, b.status, b.price_per_hour).run();
+        await env.DB.prepare("INSERT INTO boats (name,type,capacity,status,price_per_hour) VALUES (?,?,?,?,?)")
+          .bind(b.name, b.type, b.capacity, b.status, b.price_per_hour).run();
         return json({ success: true });
       }
       if (request.method === "PUT" && id) {
         const b = await request.json();
-        await env.DB.prepare("UPDATE boats SET name=?,type=?,capacity=?,status=?,price_per_hour=? WHERE id=?").bind(b.name, b.type, b.capacity, b.status, b.price_per_hour, id).run();
+        await env.DB.prepare("UPDATE boats SET name=?,type=?,capacity=?,status=?,price_per_hour=? WHERE id=?")
+          .bind(b.name, b.type, b.capacity, b.status, b.price_per_hour, id).run();
         return json({ success: true });
       }
       if (request.method === "DELETE" && id) {
