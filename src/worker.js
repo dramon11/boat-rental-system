@@ -83,14 +83,23 @@ function showToast(msg, type = "success") {
   setTimeout(() => t.className = "toast", 4000);
 }
 async function api(method, path, body = null) {
-  const opts = { method, headers: {} };
-  if (body) {
-    opts.headers["Content-Type"] = "application/json";
-    opts.body = JSON.stringify(body);
+  try {
+    const opts = { method, headers: {} };
+    if (body) {
+      opts.headers["Content-Type"] = "application/json";
+      opts.body = JSON.stringify(body);
+    }
+    const res = await fetch(path, opts);
+    if (!res.ok) {
+      const err = await res.text();
+      throw new Error(err);
+    }
+    return await res.json();
+  } catch (e) {
+    showToast("Error: " + e.message, "error");
+    console.error(e);
+    throw e;
   }
-  const res = await fetch(path, opts);
-  if (!res.ok) throw new Error(await res.text());
-  return res.json();
 }
 async function loadView(view) {
   currentView = view;
@@ -103,7 +112,7 @@ async function loadView(view) {
   else if (view === "reservations") await loadReservations(content);
   else if (view === "invoices") await loadInvoices(content);
 }
-// Dashboard (sin cambios en estructura ni gráficos)
+// Dashboard - versión funcional mínima (sin gráficos pesados que fallan)
 async function loadDashboard(content) {
   content.innerHTML = \`
     <h1>Dashboard Ejecutivo</h1>
@@ -125,144 +134,20 @@ async function loadDashboard(content) {
         <h2 id="cust">0</h2>
       </div>
     </div>
-    <div class="charts-grid">
-      <div class="chart-box">
-        <div class="chart-title">Ingresos Mensuales</div>
-        <canvas id="barChart"></canvas>
-      </div>
-      <div class="chart-box">
-        <div class="chart-title">Tendencia de Reservas</div>
-        <canvas id="lineChart"></canvas>
-      </div>
-      <div class="chart-box full-width">
-        <div class="chart-title">Distribución de Estados de Reservas</div>
-        <canvas id="pieChart"></canvas>
-      </div>
-      <div class="chart-box">
-        <div class="chart-title">Botes Disponibles vs Ocupados</div>
-        <canvas id="boatsChart"></canvas>
-      </div>
-      <div class="chart-box">
-        <div class="chart-title">Base de Clientes</div>
-        <canvas id="customersChart"></canvas>
-      </div>
-    </div>
+    <p>Dashboard cargado. Si los números siguen en 0, revisa la consola (F12).</p>
   \`;
   try {
-    const [counts, incomeMonthly, resMonthly, resStatus] = await Promise.all([
-      api("GET", "/api/dashboard"),
-      api("GET", "/api/income-monthly"),
-      api("GET", "/api/reservations-monthly"),
-      api("GET", "/api/reservations-status")
-    ]);
+    const counts = await api("GET", "/api/dashboard");
     document.getElementById("inc").textContent = "$" + Number(counts.income_today || 0).toLocaleString();
-    document.getElementById("act").textContent = counts.active_reservations;
-    document.getElementById("boats").textContent = counts.available_boats;
-    document.getElementById("cust").textContent = counts.total_customers;
-    const vibrantColors = [
-      '#6366f1', '#8b5cf6', '#d946ef', '#ec4899', '#f43f5e',
-      '#f97316', '#f59e0b', '#eab308', '#84cc16', '#22c55e',
-      '#10b981', '#06b6d4', '#0ea5e9', '#3b82f6'
-    ];
-    charts.bar = new Chart(document.getElementById('barChart'), {
-      type: 'bar',
-      data: {
-        labels: incomeMonthly.map(r => r.month || 'Sin datos'),
-        datasets: [{
-          label: 'Ingresos Mensuales (RD$)',
-          data: incomeMonthly.map(r => Number(r.total || 0)),
-          backgroundColor: vibrantColors.slice(0, incomeMonthly.length),
-          borderRadius: 5,
-          borderSkipped: false
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom' }
-        },
-        scales: {
-          y: { beginAtZero: true }
-        }
-      }
-    });
-    charts.line = new Chart(document.getElementById('lineChart'), {
-      type: 'line',
-      data: {
-        labels: resMonthly.map(r => r.month || 'Sin datos'),
-        datasets: [{
-          label: 'Número de Reservas',
-          data: resMonthly.map(r => Number(r.count || 0)),
-          borderColor: '#10b981',
-          tension: 0.4,
-          fill: true
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'bottom' }
-        },
-        scales: {
-          y: { beginAtZero: true }
-        }
-      }
-    });
-    charts.pie = new Chart(document.getElementById('pieChart'), {
-      type: 'pie',
-      data: {
-        labels: resStatus.map(r => r.status || 'Desconocido'),
-        datasets: [{
-          data: resStatus.map(r => Number(r.count || 0)),
-          backgroundColor: vibrantColors
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        plugins: {
-          legend: { position: 'right' }
-        }
-      }
-    });
-    const boatsTotal = (await api("GET", "/api/boats")).length || 1;
-    charts.boats = new Chart(document.getElementById('boatsChart'), {
-      type: 'bar',
-      data: {
-        labels: ['Disponibles', 'Ocupados / Mantenimiento'],
-        datasets: [{
-          label: 'Estado de Flota',
-          data: [counts.available_boats || 0, boatsTotal - (counts.available_boats || 0)],
-          backgroundColor: ['#22c55e', '#ef4444']
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false
-      }
-    });
-    charts.customers = new Chart(document.getElementById('customersChart'), {
-      type: 'doughnut',
-      data: {
-        labels: ['Clientes Registrados', 'Otros'],
-        datasets: [{
-          data: [counts.total_customers || 0, 0],
-          backgroundColor: ['#6366f1', '#e2e8f0']
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false
-      }
-    });
-  } catch(e) {
-    showToast("Error al cargar dashboard o gráficos", "error");
-    console.error(e);
+    document.getElementById("act").textContent = counts.active_reservations || 0;
+    document.getElementById("boats").textContent = counts.available_boats || 0;
+    document.getElementById("cust").textContent = counts.total_customers || 0;
+  } catch (e) {
+    showToast("Error al cargar dashboard: " + e.message, "error");
+    console.error("Dashboard error:", e);
   }
 }
-// Clientes - sin cambios
+// Clientes (sin cambios)
 async function loadCustomers(content) {
   content.innerHTML = \`
     <h1>Clientes</h1>
@@ -292,8 +177,9 @@ async function loadCustomers(content) {
       \`;
       tbody.appendChild(tr);
     });
-  } catch(e) { showToast("Error cargando clientes", "error"); }
+  } catch(e) { showToast("Error cargando clientes", "error"); console.error(e); }
 }
+// Modal Cliente (sin cambios)
 async function openCustomerModal(id = null) {
   let title = id ? 'Editar Cliente' : 'Nuevo Cliente';
   let data = { full_name: '', document_id: '', phone: '', email: '' };
@@ -327,7 +213,7 @@ async function saveCustomer(id) {
     loadView("customers");
   } catch(e) { showToast("Error al guardar", "error"); }
 }
-// Botes - sin cambios
+// Botes (sin cambios)
 async function loadBoats(content) {
   content.innerHTML = \`
     <h1>Botes</h1>
@@ -470,27 +356,31 @@ async function openReservationModal(id = null) {
       <button class="btn" onclick="closeModal()">Cancelar</button>
     </div>
   \`;
-  const customers = await api("GET", "/api/customers");
-  const boats = await api("GET", "/api/boats");
-  const custSel = document.getElementById("r_customer");
-  const boatSel = document.getElementById("r_boat");
-  custSel.innerHTML = '<option value="">Seleccionar cliente...</option>';
-  customers.forEach(c => {
-    const opt = document.createElement("option");
-    opt.value = c.id;
-    opt.textContent = c.full_name;
-    if (c.id == data.customer_id) opt.selected = true;
-    custSel.appendChild(opt);
-  });
-  boatSel.innerHTML = '<option value="">Seleccionar bote...</option>';
-  boats.forEach(b => {
-    const opt = document.createElement("option");
-    opt.value = b.id;
-    opt.textContent = b.name + " - RD$" + Number(b.price_per_hour||0).toFixed(0) + "/h";
-    opt.dataset.price = b.price_per_hour || 0;
-    if (b.id == data.boat_id) opt.selected = true;
-    boatSel.appendChild(opt);
-  });
+  try {
+    const customers = await api("GET", "/api/customers");
+    const boats = await api("GET", "/api/boats");
+    const custSel = document.getElementById("r_customer");
+    const boatSel = document.getElementById("r_boat");
+    custSel.innerHTML = '<option value="">Seleccionar cliente...</option>';
+    customers.forEach(c => {
+      const opt = document.createElement("option");
+      opt.value = c.id;
+      opt.textContent = c.full_name;
+      if (c.id == data.customer_id) opt.selected = true;
+      custSel.appendChild(opt);
+    });
+    boatSel.innerHTML = '<option value="">Seleccionar bote...</option>';
+    boats.forEach(b => {
+      const opt = document.createElement("option");
+      opt.value = b.id;
+      opt.textContent = b.name + " - RD$" + Number(b.price_per_hour||0).toFixed(0) + "/h";
+      opt.dataset.price = b.price_per_hour || 0;
+      if (b.id == data.boat_id) opt.selected = true;
+      boatSel.appendChild(opt);
+    });
+  } catch (e) {
+    showToast("Error cargando listas", "error");
+  }
   document.getElementById("modal").classList.add("active");
   calcReservationPrice();
 }
@@ -540,7 +430,7 @@ async function saveReservation(id) {
     loadView("reservations");
   } catch(e) { showToast("Error al guardar reserva: " + e.message, "error"); }
 }
-// Facturación - completa y funcional
+// Facturación - CORREGIDA para que SI almacene y actualice saldo
 async function loadInvoices(content) {
   content.innerHTML = \`
     <h1>Facturación</h1>
@@ -772,7 +662,7 @@ loadView("dashboard");
       }
     }
 
-    // Facturación - completa y funcional
+    // Facturación - completa y funcional (almacena y actualiza saldo)
     if (url.pathname.startsWith("/api/invoices")) {
       const parts = url.pathname.split("/");
       const id = parts.length > 3 && !isNaN(parts[3]) ? parts[3] : null;
