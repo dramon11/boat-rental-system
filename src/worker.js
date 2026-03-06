@@ -678,9 +678,69 @@ loadView("dashboard");
         const { results } = await env.DB.prepare("SELECT * FROM invoices ORDER BY created_at DESC").all();
         return json(results || []);
       }
-      // Aquí puedes agregar POST para crear facturas/anticipos más adelante
+      // Facturas - COMPLETADO
+    if (url.pathname.startsWith("/api/invoices")) {
+      const parts = url.pathname.split("/");
+      const id = parts.length > 3 && !isNaN(parts[3]) ? parts[3] : null;
+
+      if (request.method === "GET") {
+        if (url.searchParams.get("full") === "true") {
+          const { results } = await env.DB.prepare(`
+            SELECT i.*, 
+                   r.customer_id, r.total_amount, r.deposit_amount, r.balance_due,
+                   c.full_name AS customer_name,
+                   b.name AS boat_name
+            FROM invoices i
+            LEFT JOIN reservations r ON i.reservation_id = r.id
+            LEFT JOIN customers c ON r.customer_id = c.id
+            LEFT JOIN boats b ON r.boat_id = b.id
+            ORDER BY i.created_at DESC
+          `).all();
+          return json(results || []);
+        }
+        const { results } = await env.DB.prepare("SELECT * FROM invoices ORDER BY created_at DESC").all();
+        return json(results || []);
+      }
+
+      if (request.method === "POST") {
+        const b = await request.json();
+
+        // 1. Registrar la factura
+        const stmt = await env.DB.prepare(`
+          INSERT INTO invoices 
+          (reservation_id, amount_paid, type, payment_method, created_at)
+          VALUES (?, ?, ?, ?, datetime('now'))
+        `);
+        await stmt.bind(
+          b.reservation_id,
+          b.amount_paid,
+          b.type,
+          b.payment_method
+        ).run();
+
+        // 2. Actualizar saldo de reserva si es pago final
+        if (b.type === "final" && b.reservation_id) {
+          await env.DB.prepare(`
+            UPDATE reservations
+            SET balance_due = MAX(0, balance_due - ?),
+                status = CASE 
+                  WHEN balance_due <= ? THEN 'pagada' 
+                  ELSE status 
+                END
+            WHERE id = ?
+          `).bind(b.amount_paid, b.amount_paid, b.reservation_id).run();
+        }
+
+        return json({ success: true });
+      }
+
+      if (request.method === "DELETE" && id) {
+        await env.DB.prepare("DELETE FROM invoices WHERE id=?").bind(id).run();
+        return json({ success: true });
+      }
     }
 
     return json({ error: "Not Found" }, 404);
   }
 };
+   
